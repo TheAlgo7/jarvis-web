@@ -6,7 +6,7 @@
 
 **A web-based AI assistant that lives in your browser — voice-controlled, personality-driven, built to command.**
 
-[![Live Site](https://img.shields.io/badge/Live%20Site-jarvis--web.vercel.app-F5A623?style=for-the-badge&logo=vercel&logoColor=black)](https://jarvis-web.vercel.app)
+[![Live Site](https://img.shields.io/badge/Live%20Site-jarvis--web--alpha.vercel.app-F5A623?style=for-the-badge&logo=vercel&logoColor=black)](https://jarvis-web-alpha.vercel.app)
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
@@ -34,7 +34,7 @@ Everything runs client-side. Notes persist to `localStorage`. Voice uses the Web
 
 ## 🌍 Live Demo
 
-**[→ jarvis-web.vercel.app](https://jarvis-web.vercel.app)**
+**[→ jarvis-web-alpha.vercel.app](https://jarvis-web-alpha.vercel.app)**
 
 Works best on Chrome or Edge — Firefox has limited Web Speech API support.
 
@@ -158,6 +158,7 @@ For voice: the browser will ask for microphone permission on first use.
 
 ```bash
 git clone https://github.com/TheAlgo7/jarvis-web
+
 cd jarvis-web
 ```
 
