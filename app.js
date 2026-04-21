@@ -1,5 +1,5 @@
 // ============================================
-// J.A.R.V.I.S. v2.0
+// J.A.R.V.I.S. v3.1
 // Just A Rather Very Intelligent System
 // By Gaurav Kumar & Ameen James — Revived 2026
 // ============================================
@@ -81,18 +81,26 @@ class Jarvis {
   loadVoice() {
     const pickVoice = () => {
       const voices = this.synth.getVoices();
-      const preferred = [
-        "Google UK English Male",
-        "Microsoft David",
-        "Daniel",
-        "Alex",
-        "Google US English",
-        "Microsoft Mark",
+
+      // en-GB male voices in preference order — targeting Paul Bettany's JARVIS register
+      // Names vary by browser/OS: Chrome, Edge (Neural), macOS, Windows Desktop
+      const enGbMale = [
+        "Google UK English Male",  // Chrome
+        "Microsoft Ryan",          // Edge Neural — en-GB male
+        "Microsoft Alfie",         // Edge Neural — en-GB male
+        "Microsoft Oliver",        // Edge Neural — en-GB male
+        "Microsoft George",        // Windows — en-GB male
+        "Daniel",                  // macOS/iOS — en-GB
+        "Arthur",                  // macOS — en-GB (newer)
+        "Malcolm",                 // some Linux/Windows systems
       ];
+
+      // 1. Try known en-GB male voices
       this.preferredVoice =
-        voices.find((v) =>
-          preferred.some((name) => v.name.includes(name))
-        ) ||
+        voices.find((v) => enGbMale.some((name) => v.name.includes(name))) ||
+        // 2. Any en-GB voice
+        voices.find((v) => v.lang === "en-GB") ||
+        // 3. Any English voice
         voices.find((v) => v.lang.startsWith("en")) ||
         voices[0];
     };
@@ -118,7 +126,7 @@ class Jarvis {
     this.recognition.onresult = (event) => {
       const transcript = event.results[event.resultIndex][0].transcript;
       this.stopListening();
-      this.addMessage(transcript, "user");
+      this.addMessage(this.escapeHTML(transcript), "user");
       this.processCommand(transcript.toLowerCase().trim());
     };
 
@@ -174,7 +182,7 @@ class Jarvis {
     const text = this.textInput.value.trim();
     if (!text) return;
     this.textInput.value = "";
-    this.addMessage(text, "user");
+    this.addMessage(this.escapeHTML(text), "user");
     this.processCommand(text.toLowerCase());
   }
 
@@ -182,7 +190,7 @@ class Jarvis {
 
   async boot() {
     const lines = [
-      ["> Initializing J.A.R.V.I.S. v2.0...", 10],
+      ["> Initializing J.A.R.V.I.S. v3.1...", 10],
       ["> Loading core systems...", 22],
       ["> Speech engine: ONLINE", 40],
       ["> Voice recognition: " + (this.recognition ? "ONLINE" : "UNAVAILABLE"), 58],
@@ -217,8 +225,8 @@ class Jarvis {
     this.synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    utterance.rate  = 0.92;  // measured, deliberate — Paul Bettany's JARVIS cadence
+    utterance.pitch = 0.85;  // lower register — authoritative, not robotic
     utterance.volume = 1;
     if (this.preferredVoice) {
       utterance.voice = this.preferredVoice;
@@ -352,24 +360,22 @@ class Jarvis {
     setInterval(update, 1000);
   }
 
+  batteryIcon(level, charging) {
+    const fillW = Math.max(0, Math.min(12, (level / 100) * 12));
+    const fillColor = level <= 20 ? "#E84040" : "currentColor";
+    const bolt = charging
+      ? `<path d="M10 2.5L7 7h3.5l-1.5 3.5 4.5-5.5H10l1-2.5z" fill="#F5A623" stroke="none"/>`
+      : "";
+    return `<svg aria-hidden="true" class="status-icon" width="18" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="0.6" y="0.6" width="15.8" height="9.8" rx="1.8"/><rect x="16.6" y="3.2" width="1.4" height="4.6" rx="0.7" fill="currentColor" stroke="none"/><rect x="1.5" y="1.5" width="${fillW}" height="8" rx="1" fill="${fillColor}" stroke="none"/>${bolt}</svg>`;
+  }
+
   async updateBattery() {
     try {
       if (!navigator.getBattery) return;
       const battery = await navigator.getBattery();
       const update = () => {
         const level = Math.round(battery.level * 100);
-        const icon = battery.charging
-          ? "fa-battery-bolt"
-          : level > 75
-            ? "fa-battery-full"
-            : level > 50
-              ? "fa-battery-three-quarters"
-              : level > 25
-                ? "fa-battery-half"
-                : level > 10
-                  ? "fa-battery-quarter"
-                  : "fa-battery-empty";
-        this.batteryEl.innerHTML = `<i class="fas ${icon}"></i><span class="status-value">${level}%</span>`;
+        this.batteryEl.innerHTML = `${this.batteryIcon(level, battery.charging)}<span class="status-value">${level}%</span>`;
       };
       update();
       battery.addEventListener("levelchange", update);
@@ -541,21 +547,39 @@ class Jarvis {
       return this.handleGoodbye();
     }
 
-    // What is / Who is (general knowledge → Google)
+    // What is / Who is / Why / How — ask Groq instead of opening Google
     if (/^(what|who|where|when|why|how)\s+/.test(input)) {
-      return this.handleSearch(input);
+      return this.askGroq(input);
     }
 
-    // Fallback — search Google
-    this.respond(
-      `I'm not sure about that, Sir. Let me search it for you.`
-    );
-    setTimeout(() => {
-      window.open(
-        `https://www.google.com/search?q=${encodeURIComponent(input)}`,
-        "_blank"
+    // Fallback — ask Groq instead of opening Google
+    this.askGroq(input);
+  }
+
+  // ---- Groq AI ----
+
+  async askGroq(question) {
+    this.showThinking();
+    try {
+      const res = await fetch(JARVIS_CONFIG.askEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+
+      if (!res.ok) throw new Error(`API ${res.status}`);
+
+      const data = await res.json();
+      this.respond(this.escapeHTML(data.answer));
+    } catch (e) {
+      this.removeThinking();
+      this.respond(
+        "My intelligence systems are temporarily unavailable, Sir. " +
+        `<a href="https://www.google.com/search?q=${encodeURIComponent(question)}" ` +
+        `target="_blank" style="color:var(--primary)">Search instead</a>.`,
+        false
       );
-    }, 1000);
+    }
   }
 
   // ---- Command Handlers ----
@@ -586,7 +610,7 @@ class Jarvis {
     this.respond(
       "I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. " +
         "I'm your personal AI assistant, built to help you with tasks, " +
-        "answer questions, and make your digital life easier. Version 2.0, Sir."
+        "answer questions, and make your digital life easier. Version 3.1, Sir."
     );
   }
 

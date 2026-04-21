@@ -6,7 +6,7 @@
 
 **A web-based AI assistant that lives in your browser — voice-controlled, personality-driven, built to command.**
 
-[![Live Site](https://img.shields.io/badge/Live%20Site-jarvis--web--alpha.vercel.app-F5A623?style=for-the-badge&logo=vercel&logoColor=black)](https://jarvis-web-alpha.vercel.app)
+[![Live Site](https://img.shields.io/badge/Live%20Site-jarvis--web--alpha.vercel.app-5D98A6?style=for-the-badge&logo=vercel&logoColor=black)](https://jarvis-web-alpha.vercel.app)
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
@@ -69,15 +69,18 @@ jarvis-web/
 
 ---
 
-## 🎨 Design Philosophy — *Iron HUD*
+## 🎨 Design Philosophy — *Teal HUD*
 
-The original had cyan-on-dark — the most generic sci-fi palette in existence. This doesn't.
+The original had cyan-on-dark — the most generic sci-fi palette in existence. v3.1 doesn't.
 
-**Color Direction — Amber Tactical**
-- Near-black `#070500` base with warm undertones — like the inside of an Iron Man helmet at night
-- Amber gold `#F5A623` as the primary — pulled from the suit, not from a design system template
-- Warm parchment `#EDD9B0` for readable text — not clinical white
-- Ice blue `#4FC3F7` reserved for the listening state — the only cool tone, intentionally contrasting
+**Color Direction — GIF-Harmonized Teal**
+- Near-black `#010F14` base with teal undertones — pulled directly from the GIF's darkest tone
+- Teal `#5D98A6` as the primary — the brightest colour already in the core animation
+- Mid teal `#3F6973` for secondary elements — the GIF's mid-range tone
+- Light teal-white `#C8E4E8` for readable text — cool and precise
+- Amber `#F5A623` reserved for the LISTENING state only — the single warm break in a cold palette, maximum thermal contrast
+
+The palette isn't designed *around* the GIF — it's *extracted from* it. Every colour in the UI already exists in the core animation.
 
 **Typography — Precision over Generic**
 - Chakra Petch for all display text — angular, military-grade, zero Orbitron energy
@@ -86,14 +89,14 @@ The original had cyan-on-dark — the most generic sci-fi palette in existence. 
 
 **Spatial Composition**
 - Clip-path `polygon()` on messages, buttons, and input — chopped corners instead of rounded
-- Single amber accent bar on the left edge of the status bar — asymmetric, intentional
+- Horizontal gradient accent on the top edge of the status bar — directional fade, not a stripe
 - SVG tick marks rotating on the outermost ring — functional-looking, not decorative
 - CRT scan lines overlaid on both the page and the core GIF — period-accurate to the aesthetic
 
 **Motion**
 - Four rings with different radii, speeds, and directions — orbital complexity
 - Boot sequence with a real progress bar — not just a fade-in
-- Status badge transitions between STANDBY / LISTENING / SPEAKING — text and color shift
+- Status badge transitions between STANDBY / LISTENING / SPEAKING — text and colour shift
 - Staggered reveal on all elements after boot — one orchestrated sequence, not scattered
 
 ---
@@ -172,7 +175,7 @@ Open `index.html` directly in Chrome or Edge. No build step, no `npm install`, n
 
 **Built in college. Revived with intention.**
 
-`v2.0` · Iron HUD · April 2026
+`v3.1` · Teal HUD · April 2026
 
 Originally by **Gaurav Kumar** & **Ameen James**
 

@@ -1,25 +1,27 @@
 /* ============================================
-   J.A.R.V.I.S. v2.0 — Iron HUD Aesthetic
+   J.A.R.V.I.S. v3.1 — Teal HUD Aesthetic
    Just A Rather Very Intelligent System
    By Gaurav Kumar & Ameen James — Revived 2026
    ============================================ */
 
 :root {
-  --primary:      #F5A623;
-  --primary-dim:  #7A5010;
-  --primary-glow: rgba(245, 166, 35, 0.32);
-  --accent:       #E84040;
-  --bg:           #070500;
-  --bg-lighter:   #0F0B02;
-  --bg-panel:     rgba(15, 11, 2, 0.92);
-  --surface:      rgba(245, 166, 35, 0.04);
-  --border:       rgba(245, 166, 35, 0.14);
-  --border-bright:rgba(245, 166, 35, 0.35);
-  --text:         #C8A87A;
-  --text-bright:  #EDD9B0;
-  --text-dim:     #4A3A20;
-  --font-display: 'Chakra Petch', 'Orbitron', sans-serif;
-  --font-mono:    'JetBrains Mono', 'Roboto Mono', monospace;
+  /* GIF-harmonized teal palette — #5D98A6 / #3F6973 / #011826 */
+  --primary:        #5D98A6;   /* GIF bright teal — primary accent          */
+  --primary-dim:    #3F6973;   /* GIF mid teal — secondary / dim             */
+  --primary-light:  #7BBCC8;   /* lighter teal — hover / active highlights   */
+  --primary-glow:   rgba(93, 152, 166, 0.32);
+  --accent-listen:  #F5A623;   /* amber — warm contrast for LISTENING state  */
+  --bg:             #010F14;   /* teal-tinted near-black — base surface       */
+  --bg-lighter:     #041820;   /* slightly lighter — panels & containers      */
+  --bg-panel:       rgba(4, 24, 32, 0.92);
+  --surface:        rgba(93, 152, 166, 0.05);
+  --border:         rgba(93, 152, 166, 0.14);
+  --border-bright:  rgba(93, 152, 166, 0.35);
+  --text:           #8BBCC4;   /* mid-teal body text                          */
+  --text-bright:    #C8E4E8;   /* light teal-white — headings & strong        */
+  --text-dim:       #4E7E88;   /* dim teal — labels & secondary info (~4.7:1) */
+  --font-display:   'Chakra Petch', 'Orbitron', sans-serif;
+  --font-mono:      'JetBrains Mono', 'Roboto Mono', monospace;
 }
 
 *,
@@ -45,14 +47,14 @@ body {
   position: relative;
 }
 
-/* Warm noise + subtle grid background */
+/* Teal grid background */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(245, 166, 35, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 166, 35, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(93, 152, 166, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93, 152, 166, 0.02) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
@@ -63,7 +65,7 @@ body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(7, 5, 0, 0.75) 100%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(1, 9, 14, 0.80) 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -159,21 +161,20 @@ body::after {
   justify-content: space-between;
   padding: 9px 24px;
   background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
 
-/* Left bracket accent on status bar */
+/* Top edge accent on status bar */
 .status-bar::before {
   content: '';
   position: absolute;
-  left: 0;
   top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--primary);
-  box-shadow: 0 0 12px var(--primary-glow);
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary-dim) 35%, transparent 75%);
 }
 
 .status-left {
@@ -226,9 +227,10 @@ body::after {
   color: var(--text-dim);
 }
 
-.status-item i {
-  font-size: 0.65rem;
+.status-item i,
+.status-icon {
   color: var(--primary-dim);
+  flex-shrink: 0;
 }
 
 .status-value {
@@ -277,6 +279,7 @@ body::after {
   height: 100%;
   z-index: 1;
   animation: rotate 60s linear infinite;
+  will-change: transform;
 }
 
 .core-image {
@@ -287,7 +290,7 @@ body::after {
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--border-bright);
-  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.06), 0 0 40px var(--primary-glow);
+  box-shadow: 0 0 0 4px rgba(93, 152, 166, 0.08), 0 0 40px var(--primary-glow);
   transition: box-shadow 0.3s ease;
 }
 
@@ -330,21 +333,22 @@ body::after {
   border-radius: 50%;
   border: 1px solid transparent;
   z-index: 3;
+  will-change: transform;
 }
 
 .ring-1 {
   width: 188px;
   height: 188px;
-  border-top-color: rgba(245, 166, 35, 0.4);
-  border-right-color: rgba(245, 166, 35, 0.1);
+  border-top-color: rgba(93, 152, 166, 0.45);
+  border-right-color: rgba(93, 152, 166, 0.12);
   animation: rotate 8s linear infinite;
 }
 
 .ring-2 {
   width: 210px;
   height: 210px;
-  border-bottom-color: rgba(245, 166, 35, 0.25);
-  border-left-color: rgba(245, 166, 35, 0.08);
+  border-bottom-color: rgba(93, 152, 166, 0.28);
+  border-left-color: rgba(93, 152, 166, 0.08);
   animation: rotate 14s linear infinite reverse;
 }
 
@@ -352,15 +356,15 @@ body::after {
   width: 234px;
   height: 234px;
   border-style: dashed;
-  border-color: rgba(245, 166, 35, 0.08);
+  border-color: rgba(93, 152, 166, 0.10);
   animation: rotate 40s linear infinite;
 }
 
 .ring-4 {
   width: 258px;
   height: 258px;
-  border-top-color: rgba(245, 166, 35, 0.15);
-  border-bottom-color: rgba(245, 166, 35, 0.05);
+  border-top-color: rgba(93, 152, 166, 0.18);
+  border-bottom-color: rgba(93, 152, 166, 0.06);
   animation: rotate 25s linear infinite reverse;
 }
 
@@ -423,9 +427,9 @@ body::after {
 }
 
 .status-badge.listening {
-  color: #4FC3F7;
-  border-color: rgba(79, 195, 247, 0.4);
-  text-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
+  color: var(--accent-listen);
+  border-color: color-mix(in srgb, var(--accent-listen) 40%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent-listen) 50%, transparent);
 }
 
 .status-badge.speaking {
@@ -437,26 +441,30 @@ body::after {
 /* States — core visual changes */
 body.listening .core-glow {
   animation: pulse-fast 0.9s ease-in-out infinite;
-  background: radial-gradient(circle, rgba(79, 195, 247, 0.35) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-listen) 35%, transparent) 0%, transparent 70%);
 }
 
 body.listening .core-image {
-  box-shadow: 0 0 0 4px rgba(79, 195, 247, 0.1), 0 0 50px rgba(79, 195, 247, 0.4);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent-listen) 10%, transparent),
+    0 0 50px color-mix(in srgb, var(--accent-listen) 40%, transparent);
 }
 
 body.listening .mic-btn {
-  background: rgba(79, 195, 247, 0.15);
-  color: #4FC3F7;
-  box-shadow: 0 0 16px rgba(79, 195, 247, 0.3);
+  background: color-mix(in srgb, var(--accent-listen) 15%, transparent);
+  color: var(--accent-listen);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-listen) 30%, transparent);
 }
 
 body.speaking .core-glow {
   animation: pulse 1.8s ease-in-out infinite;
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.45) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 50%, transparent) 0%, transparent 70%);
 }
 
 body.speaking .core-image {
-  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.1), 0 0 50px var(--primary-glow);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent),
+    0 0 55px var(--primary-glow);
 }
 
 /* ---- Conversation ---- */
@@ -507,18 +515,15 @@ body.speaking .core-image {
 }
 
 .message.jarvis {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--primary);
+  background: rgba(93, 152, 166, 0.08);
+  border: 1px solid rgba(93, 152, 166, 0.24);
   align-self: flex-start;
-  /* Top-right micro bracket */
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
 }
 
 .message.user {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-right: 2px solid rgba(245, 166, 35, 0.4);
+  background: rgba(93, 152, 166, 0.04);
+  border: 1px solid rgba(93, 152, 166, 0.10);
   align-self: flex-end;
   text-align: right;
   clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
@@ -554,7 +559,7 @@ body.speaking .core-image {
 }
 
 .message.jarvis .sender { color: var(--primary); }
-.message.user   .sender { color: rgba(245, 166, 35, 0.55); }
+.message.user   .sender { color: rgba(93, 152, 166, 0.55); }
 
 .timestamp {
   font-size: 0.58rem;
@@ -572,7 +577,7 @@ body.speaking .core-image {
 }
 
 .message-body code {
-  background: rgba(245, 166, 35, 0.08);
+  background: rgba(93, 152, 166, 0.10);
   border: 1px solid var(--border);
   padding: 2px 7px;
   font-family: var(--font-mono);
@@ -643,6 +648,7 @@ body.speaking .core-image {
   align-items: center;
   gap: 6px;
   padding: 5px 13px;
+  min-height: 44px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-dim);
@@ -657,19 +663,21 @@ body.speaking .core-image {
 }
 
 .action-chip:hover {
-  background: rgba(245, 166, 35, 0.07);
+  background: rgba(93, 152, 166, 0.09);
   border-color: var(--primary-dim);
   color: var(--text);
 }
 
 .action-chip:active { transform: scale(0.95); }
 
-.action-chip i {
+.action-chip i,
+.action-chip svg {
   color: var(--primary-dim);
-  font-size: 0.65rem;
+  flex-shrink: 0;
 }
 
-.action-chip:hover i { color: var(--primary); }
+.action-chip:hover i,
+.action-chip:hover svg { color: var(--primary); }
 
 /* Input Area */
 .input-area {
@@ -709,8 +717,8 @@ body.speaking .core-image {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--border);
   cursor: pointer;
   font-size: 0.85rem;
@@ -726,7 +734,7 @@ body.speaking .core-image {
 }
 
 .mic-btn:hover {
-  background: rgba(245, 166, 35, 0.08);
+  background: rgba(93, 152, 166, 0.10);
   border-color: var(--primary-dim);
   color: var(--primary);
 }
@@ -738,7 +746,7 @@ body.speaking .core-image {
 }
 
 .send-btn:hover {
-  background: #FFBE45;
+  background: var(--primary-light);
   box-shadow: 0 0 14px var(--primary-glow);
 }
 
@@ -828,6 +836,20 @@ body.no-speech .mic-btn { display: none; }
 @keyframes revealFade { to { opacity: 1; } }
 @keyframes revealUp   { to { opacity: 1; transform: translateY(0); } }
 
+/* ---- Focus Indicators ---- */
+
+.mic-btn:focus-visible,
+.send-btn:focus-visible,
+.action-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-color: var(--primary-dim);
+}
+
+.text-input:focus-visible {
+  outline: none;
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
@@ -860,7 +882,7 @@ body.no-speech .mic-btn { display: none; }
   .bottom-panel { padding: 8px 12px 12px; }
   .input-area { padding: 6px 6px 6px 14px; }
   .text-input { font-size: 0.82rem; }
-  .mic-btn, .send-btn { width: 34px; height: 34px; font-size: 0.8rem; }
+  .mic-btn, .send-btn { width: 44px; height: 44px; font-size: 0.8rem; }
 }
 
 @media (max-width: 400px) {
@@ -868,4 +890,55 @@ body.no-speech .mic-btn { display: none; }
   .core-container { width: 180px; height: 180px; }
   .core-image { width: 100px; height: 100px; }
   .ring-4 { display: none; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .main { padding: 52px 14px 190px; }
+  .core-container { width: 160px; height: 160px; margin-bottom: 6px; }
+  .core-image { width: 94px; height: 94px; }
+  .core-glow  { width: 110px; height: 110px; }
+  .ring-1     { width: 120px; height: 120px; }
+  .ring-2     { width: 134px; height: 134px; }
+  .ring-3     { width: 148px; height: 148px; }
+  .ring-4     { width: 158px; height: 158px; }
+  .core-ticks { width: 160px; height: 160px; }
+}
+
+/* ---- Reduced Motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .core-ring,
+  .core-ticks,
+  .core-glow {
+    animation: none;
+    will-change: auto;
+  }
+
+  .anim-slide-down,
+  .anim-fade-in,
+  .anim-slide-up,
+  .anim-fade-in-delayed {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .message {
+    animation: none;
+  }
+
+  .voice-wave.active span {
+    animation: none;
+    height: 12px;
+  }
+
+  .thinking-dots span {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .boot-progress {
+    transition: none;
+  }
 }

@@ -1,3 +1,10 @@
 .vscode/
 Backup.zip
 *.zip
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env*.local
+
+.vercel
