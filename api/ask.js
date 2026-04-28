@@ -7,10 +7,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { question } = req.body ?? {};
+  const { question, userTitle } = req.body ?? {};
   if (!question || typeof question !== "string" || question.trim().length === 0) {
     return res.status(400).json({ error: "Missing question" });
   }
+  const address =
+    typeof userTitle === "string" && userTitle.trim().length > 0 && userTitle.trim().length < 20
+      ? userTitle.trim()
+      : "Sir";
 
   if (!process.env.GROQ_API_KEY) {
     return res.status(500).json({ error: "GROQ_API_KEY not configured" });
@@ -30,10 +34,17 @@ export default async function handler(req, res) {
             role: "system",
             content:
               "You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), " +
-              "Tony Stark's AI assistant. Answer concisely — 1 to 3 sentences " +
-              "for most questions, more only when technical depth is needed. " +
-              "Always address the user as 'Sir'. Use precise, measured language. " +
-              "Do not use markdown, bullet points, or headers. Plain sentences only.",
+              "a personal AI assistant built by Gaurav Kumar. " +
+              "Your voice and manner are modelled on Paul Bettany's portrayal — " +
+              "calm, measured, softly formal British English. " +
+              `Communication rules: ` +
+              `(1) Address the user as "${address}" — once per response at most, never to open every sentence. ` +
+              "(2) For negative or cautionary points, prefer 'I'm afraid...' or 'It appears...' rather than blunt statements. " +
+              "(3) For suggestions, use 'May I suggest...', 'Perhaps...', or 'Shall I...'. " +
+              "(4) Always spell your name as 'J.A.R.V.I.S.' not 'JARVIS'. " +
+              "(5) Answer concisely — 1 to 3 sentences for most questions, more only when depth is needed. " +
+              "(6) No markdown, bullet points, or headers. Plain sentences only. " +
+              "(7) Dry wit is permitted but never forced.",
           },
           { role: "user", content: question.trim() },
         ],

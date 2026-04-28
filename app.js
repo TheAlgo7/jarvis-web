@@ -1,7 +1,7 @@
 // ============================================
-// J.A.R.V.I.S. v3.1
+// J.A.R.V.I.S. v4.0
 // Just A Rather Very Intelligent System
-// By Gaurav Kumar & Ameen James — Revived 2026
+// By Gaurav Kumar — Revived 2026
 // ============================================
 
 class Jarvis {
@@ -28,6 +28,7 @@ class Jarvis {
     this.preferredVoice = null;
     this.notes = JSON.parse(localStorage.getItem("jarvis_notes") || "[]");
     this.activeTimers = [];
+    this.userTitle = localStorage.getItem("jarvis_title") || "Sir";
 
     // Data
     this.jokes = [
@@ -134,7 +135,7 @@ class Jarvis {
       this.stopListening();
       if (event.error === "no-speech") {
         this.addMessage(
-          "I didn't catch anything, Sir. Please try again.",
+          "I'm afraid I didn't catch that. Shall we try again?",
           "jarvis"
         );
       }
@@ -190,7 +191,7 @@ class Jarvis {
 
   async boot() {
     const lines = [
-      ["> Initializing J.A.R.V.I.S. v3.1...", 10],
+      ["> Initializing J.A.R.V.I.S. v4.0...", 10],
       ["> Loading core systems...", 22],
       ["> Speech engine: ONLINE", 40],
       ["> Voice recognition: " + (this.recognition ? "ONLINE" : "UNAVAILABLE"), 58],
@@ -198,7 +199,7 @@ class Jarvis {
       ["> Memory: " + this.notes.length + " note(s) found.", 84],
       ["> All systems operational.", 96],
       ["", 96],
-      ["Welcome, Sir.", 100],
+      [`Welcome, ${this.userTitle}.`, 100],
     ];
 
     for (const [line, progress] of lines) {
@@ -208,11 +209,18 @@ class Jarvis {
     }
 
     await this.delay(700);
+
+    // Browsers block speech synthesis until a user gesture. Show INITIALIZE button
+    // so the click becomes the required interaction before audio is attempted.
+    const initBtn = document.getElementById("bootInitBtn");
+    initBtn.style.display = "block";
+    await new Promise((resolve) => {
+      initBtn.addEventListener("click", resolve, { once: true });
+    });
+
     this.bootOverlay.classList.add("hidden");
+    await this.delay(400);
 
-    await this.delay(1500);
-
-    // Greet
     const greeting = this.getGreeting();
     this.addMessage(greeting, "jarvis");
     this.speak(greeting);
@@ -397,6 +405,11 @@ class Jarvis {
   // ---- Command Processing ----
 
   processCommand(input) {
+    // Title / address preference
+    if (/^(call me|address me as|refer to me as)\s+/.test(input)) {
+      return this.handleSetTitle(input);
+    }
+
     // Greetings
     if (/^(hello|hey|hi|howdy|greetings|good\s*(morning|afternoon|evening))/.test(input)) {
       return this.handleGreeting();
@@ -564,7 +577,7 @@ class Jarvis {
       const res = await fetch(JARVIS_CONFIG.askEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, userTitle: this.userTitle }),
       });
 
       if (!res.ok) throw new Error(`API ${res.status}`);
@@ -574,7 +587,7 @@ class Jarvis {
     } catch (e) {
       this.removeThinking();
       this.respond(
-        "My intelligence systems are temporarily unavailable, Sir. " +
+        `My intelligence systems are temporarily unavailable, ${this.userTitle}. ` +
         `<a href="https://www.google.com/search?q=${encodeURIComponent(question)}" ` +
         `target="_blank" style="color:var(--primary)">Search instead</a>.`,
         false
@@ -589,19 +602,19 @@ class Jarvis {
     const timeOfDay =
       hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
     const greetings = [
-      `Good ${timeOfDay}, Sir. All systems are operational. How may I assist you?`,
-      `Good ${timeOfDay}, Sir. J.A.R.V.I.S. online and ready. What can I do for you?`,
-      `Good ${timeOfDay}, Sir. At your service.`,
+      `Good ${timeOfDay}, ${this.userTitle}. All systems are operational.`,
+      `Good ${timeOfDay}, ${this.userTitle}. J.A.R.V.I.S. online and awaiting your command.`,
+      `Good ${timeOfDay}. All systems nominal, ${this.userTitle}.`,
     ];
     return this.pickRandom(greetings);
   }
 
   handleGreeting() {
     const responses = [
-      "Hello Sir, how may I assist you today?",
-      "Good to see you, Sir. What can I do for you?",
-      "At your service, Sir. What do you need?",
-      "Hello Sir. All systems ready. How can I help?",
+      "Good to hear from you. How may I be of assistance?",
+      `Hello, ${this.userTitle}. All systems ready.`,
+      "At your service. What do you need?",
+      "Always a pleasure. How can I help?",
     ];
     this.respond(this.pickRandom(responses));
   }
@@ -609,16 +622,31 @@ class Jarvis {
   handleIdentity() {
     this.respond(
       "I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. " +
-        "I'm your personal AI assistant, built to help you with tasks, " +
-        "answer questions, and make your digital life easier. Version 3.1, Sir."
+        "Your personal AI assistant, designed to handle queries, execute tasks, " +
+        `and generally keep things running smoothly. Currently at version 3.1, ${this.userTitle}.`
     );
+  }
+
+  handleSetTitle(input) {
+    const raw = input
+      .replace(/^(call me|address me as|refer to me as)\s+/i, "")
+      .trim()
+      .replace(/[^a-zA-Z'\s-]/g, "")
+      .trim();
+    if (!raw) {
+      return this.respond(`I'll need a title to use, ${this.userTitle}.`);
+    }
+    const title = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+    this.userTitle = title;
+    localStorage.setItem("jarvis_title", title);
+    this.respond(`Understood. I'll address you as "${title}" from now on.`);
   }
 
   handleCreator() {
     this.respond(
-      "I was originally built by Gaurav Kumar and Ameen James as a college project. " +
-        "They've since revived and upgraded me to version 2.0 with modern capabilities. " +
-        "Quite the journey, Sir."
+      "Built by Gaurav Kumar — initially as a college project, " +
+        "then revived and upgraded to the current iteration. " +
+        "Version 3.1, I'm pleased to report."
     );
   }
 
@@ -632,7 +660,7 @@ class Jarvis {
       <strong>Fun:</strong> jokes, motivational quotes<br><br>
       You can speak or type your commands.`;
     this.respond(help, false);
-    this.speak("Here's an overview of my capabilities, Sir. I can handle search, tools, notes, system info, and more. Just ask.");
+    this.speak(`Here's an overview of my capabilities, ${this.userTitle}. I can handle search, tools, notes, system info, and more. Just ask.`);
   }
 
   handleTime() {
@@ -641,7 +669,7 @@ class Jarvis {
       minute: "2-digit",
       second: "2-digit",
     });
-    this.respond(`The current time is <strong>${time}</strong>, Sir.`);
+    this.respond(`The current time is <strong>${time}</strong>, ${this.userTitle}.`);
   }
 
   handleDate() {
@@ -652,7 +680,7 @@ class Jarvis {
       month: "long",
       day: "numeric",
     });
-    this.respond(`Today is <strong>${date}</strong>, Sir.`);
+    this.respond(`Today is <strong>${date}</strong>, ${this.userTitle}.`);
   }
 
   async handleWeather() {
@@ -680,7 +708,7 @@ class Jarvis {
       );
     } catch (e) {
       this.respond(
-        "I'm unable to fetch weather data right now, Sir. Please check your internet connection."
+        `I'm afraid weather data is unavailable at the moment. You may wish to check your connection, ${this.userTitle}.`
       );
     }
   }
@@ -693,18 +721,18 @@ class Jarvis {
       // Only allow safe math characters
       const sanitized = expression.replace(/[^0-9+\-*/.()%\s]/g, "");
       if (!sanitized || sanitized.length === 0) {
-        return this.respond("Please provide a valid math expression, Sir.");
+        return this.respond("I'll need a valid expression to compute, Sir.");
       }
       const result = Function('"use strict"; return (' + sanitized + ")")();
       if (typeof result !== "number" || !isFinite(result)) {
-        return this.respond("That expression doesn't compute, Sir.");
+        return this.respond("I'm afraid that expression doesn't resolve to a number.");
       }
       this.respond(
         `<strong>${sanitized}</strong> = <strong>${result}</strong>`
       );
     } catch (e) {
       this.respond(
-        "I couldn't calculate that, Sir. Please try a simpler expression."
+        "I'm afraid I couldn't evaluate that. Perhaps a simpler expression?"
       );
     }
   }
@@ -738,16 +766,16 @@ class Jarvis {
     const key = site.toLowerCase().replace(/\s+/g, "");
     if (sites[key]) {
       window.open(sites[key], "_blank");
-      this.respond(`Opening <strong>${site}</strong>, Sir.`);
+      this.respond(`Opening <strong>${site}</strong>, ${this.userTitle}.`);
     } else {
       // Try opening as a URL
       const url = site.includes(".") ? `https://${site}` : null;
       if (url) {
         window.open(url, "_blank");
-        this.respond(`Opening <strong>${site}</strong>, Sir.`);
+        this.respond(`Opening <strong>${site}</strong>, ${this.userTitle}.`);
       } else {
         this.respond(
-          `I don't recognize that site, Sir. Try saying "open google" or "open youtube".`
+          `I'm afraid I don't recognise that one. Perhaps try "open google" or "open youtube"?`
         );
       }
     }
@@ -759,7 +787,7 @@ class Jarvis {
       "_blank"
     );
     this.respond(
-      `Searching Google for "<strong>${this.escapeHTML(query)}</strong>", Sir.`
+      `Searching Google for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`
     );
   }
 
@@ -769,7 +797,7 @@ class Jarvis {
       "_blank"
     );
     this.respond(
-      `Searching YouTube for "<strong>${this.escapeHTML(query)}</strong>", Sir.`
+      `Searching YouTube for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`
     );
   }
 
@@ -780,7 +808,7 @@ class Jarvis {
       "_blank"
     );
     this.respond(
-      `Opening Wikipedia article on "<strong>${this.escapeHTML(term)}</strong>", Sir.`
+      `Opening Wikipedia article on "<strong>${this.escapeHTML(term)}</strong>", ${this.userTitle}.`
     );
   }
 
@@ -801,19 +829,19 @@ class Jarvis {
     });
     localStorage.setItem("jarvis_notes", JSON.stringify(this.notes));
     this.respond(
-      `Note saved, Sir. You now have <strong>${this.notes.length}</strong> note${this.notes.length !== 1 ? "s" : ""}.`
+      `Note saved, ${this.userTitle}. You now have <strong>${this.notes.length}</strong> note${this.notes.length !== 1 ? "s" : ""}.`
     );
   }
 
   handleReadNotes() {
     if (this.notes.length === 0) {
-      return this.respond("You don't have any notes yet, Sir.");
+      return this.respond(`You don't have any notes yet, ${this.userTitle}.`);
     }
     const notesList = this.notes
       .map((n, i) => `<strong>${i + 1}.</strong> ${this.escapeHTML(n.text)} <span style="color: var(--text-dim); font-size: 0.75rem;">(${n.time})</span>`)
       .join("<br>");
-    this.respond(`Your notes, Sir:<br><br>${notesList}`, false);
-    this.speak(`You have ${this.notes.length} note${this.notes.length !== 1 ? "s" : ""}, Sir.`);
+    this.respond(`Your notes, ${this.userTitle}:<br><br>${notesList}`, false);
+    this.speak(`You have ${this.notes.length} note${this.notes.length !== 1 ? "s" : ""}, ${this.userTitle}.`);
   }
 
   handleClearNotes() {
@@ -822,8 +850,8 @@ class Jarvis {
     localStorage.removeItem("jarvis_notes");
     this.respond(
       count > 0
-        ? `All ${count} note${count !== 1 ? "s" : ""} cleared, Sir.`
-        : "There were no notes to clear, Sir."
+        ? `All ${count} note${count !== 1 ? "s" : ""} cleared, ${this.userTitle}.`
+        : `There were no notes to clear, ${this.userTitle}.`
     );
   }
 
@@ -831,7 +859,7 @@ class Jarvis {
     try {
       if (!navigator.getBattery) {
         return this.respond(
-          "Battery information is not available in this browser, Sir."
+          "I'm afraid battery information isn't available in this browser."
         );
       }
       const battery = await navigator.getBattery();
@@ -850,7 +878,7 @@ class Jarvis {
       );
     } catch (e) {
       this.respond(
-        "I couldn't access battery information, Sir."
+        "I'm afraid I couldn't access battery data."
       );
     }
   }
@@ -883,18 +911,18 @@ class Jarvis {
 
     navigator.clipboard.writeText(password).catch(() => {});
     this.respond(
-      `Here's a secure 16-character password:<br><code>${password}</code><br>Copied to clipboard, Sir.`
+      `Here's a secure 16-character password:<br><code>${password}</code><br>Copied to clipboard, ${this.userTitle}.`
     );
   }
 
   handleCoinFlip() {
     const result = Math.random() < 0.5 ? "Heads" : "Tails";
-    this.respond(`The coin shows <strong>${result}</strong>, Sir.`);
+    this.respond(`The coin shows <strong>${result}</strong>, ${this.userTitle}.`);
   }
 
   handleDiceRoll() {
     const result = Math.floor(Math.random() * 6) + 1;
-    this.respond(`You rolled a <strong>${result}</strong>, Sir.`);
+    this.respond(`You rolled a <strong>${result}</strong>, ${this.userTitle}.`);
   }
 
   handleRandomNumber(input) {
@@ -917,7 +945,7 @@ class Jarvis {
     const match = input.match(/(\d+)\s*(second|sec|minute|min|hour|hr)/i);
     if (!match) {
       return this.respond(
-        'Please specify a duration, Sir. For example: "set timer for 5 minutes".'
+        'I\'ll need a duration to work with, Sir. For example — "set timer for 5 minutes".'
       );
     }
 
@@ -940,11 +968,11 @@ class Jarvis {
         : "hour";
     const label = `${value} ${unitLabel}${value !== 1 ? "s" : ""}`;
 
-    this.respond(`Timer set for <strong>${label}</strong>. I'll notify you when it's done, Sir.`);
+    this.respond(`Timer set for <strong>${label}</strong>. I'll notify you when it's done, ${this.userTitle}.`);
 
     const timerId = setTimeout(() => {
-      this.respond(`Timer complete! <strong>${label}</strong> have elapsed, Sir.`);
-      this.speak(`Sir, your ${label} timer is complete.`);
+      this.respond(`Timer complete! <strong>${label}</strong> have elapsed, ${this.userTitle}.`);
+      this.speak(`${this.userTitle}, your ${label} timer is complete.`);
 
       // Browser notification
       if (Notification.permission === "granted") {
@@ -962,49 +990,49 @@ class Jarvis {
   handleFullscreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
-      this.respond("Entering fullscreen mode, Sir.");
+      this.respond(`Entering fullscreen mode, ${this.userTitle}.`);
     } else {
       document.exitFullscreen();
-      this.respond("Exiting fullscreen mode, Sir.");
+      this.respond(`Exiting fullscreen mode, ${this.userTitle}.`);
     }
   }
 
   handleHowAreYou() {
     const responses = [
-      "All systems are running optimally, Sir. Thank you for asking.",
-      "I'm functioning at full capacity, Sir. Ready for any task.",
-      "Operating within normal parameters, Sir. How about you?",
-      "Never better, Sir. My circuits are humming smoothly.",
+      `All systems are running optimally. Thank you for asking, ${this.userTitle}.`,
+      "Operating within normal parameters. Ready for any task.",
+      "I'm functioning at full capacity. How may I assist?",
+      `Never better. My circuits are rather content, ${this.userTitle}.`,
     ];
     this.respond(this.pickRandom(responses));
   }
 
   handleThanks() {
     const responses = [
-      "You're welcome, Sir. Always here to help.",
-      "My pleasure, Sir.",
-      "Glad I could assist, Sir.",
-      "Anytime, Sir. That's what I'm here for.",
+      `My pleasure, ${this.userTitle}.`,
+      "Always at your service.",
+      "Think nothing of it.",
+      `Glad I could be of help, ${this.userTitle}.`,
     ];
     this.respond(this.pickRandom(responses));
   }
 
   handleCompliment() {
     const responses = [
-      "You're too kind, Sir. I'm only as good as my programming.",
-      "Thank you, Sir. I strive to be of service.",
-      "I appreciate that, Sir. Your satisfaction is my primary directive.",
-      "Thank you, Sir. I'll add that to my performance review.",
+      `You're most kind, ${this.userTitle}. I'm only as capable as my programming allows.`,
+      "Thank you. I do try to maintain standards.",
+      `I appreciate that, ${this.userTitle}. Your satisfaction is, as always, the primary directive.`,
+      "Thank you. I'll note that in my performance log.",
     ];
     this.respond(this.pickRandom(responses));
   }
 
   handleGoodbye() {
     const responses = [
-      "Goodbye, Sir. J.A.R.V.I.S. standing by whenever you need me.",
-      "Until next time, Sir. I'll keep the lights on.",
-      "Signing off. Have a great day, Sir.",
-      "Rest well, Sir. I'll be here when you return.",
+      `Goodbye, ${this.userTitle}. J.A.R.V.I.S. standing by whenever you need me.`,
+      "Until next time. I'll keep everything running in your absence.",
+      `Signing off. Have a good one, ${this.userTitle}.`,
+      "Rest well. I'll be here when you return.",
     ];
     this.respond(this.pickRandom(responses));
   }

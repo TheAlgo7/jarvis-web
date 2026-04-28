@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#010F14" />
-    <meta name="description" content="J.A.R.V.I.S. — Just A Rather Very Intelligent System. A web-based AI assistant by Gaurav Kumar & Ameen James." />
+    <meta name="theme-color" content="#05090F" />
+    <meta name="description" content="J.A.R.V.I.S. — Just A Rather Very Intelligent System. A web-based AI assistant by Gaurav Kumar." />
     <title>J.A.R.V.I.S. — Just A Rather Very Intelligent System</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23010F14' stroke='%235D98A6' stroke-width='3'/><path d='M50 20 L50 80 M20 50 L80 50 M30 30 L70 70 M70 30 L30 70' stroke='%235D98A6' stroke-width='1.5' opacity='0.4'/><circle cx='50' cy='50' r='12' fill='none' stroke='%235D98A6' stroke-width='2'/><circle cx='50' cy='50' r='5' fill='%235D98A6'/></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2305090F' stroke='%2300AEEF' stroke-width='3'/><path d='M50 20 L50 80 M20 50 L80 50 M30 30 L70 70 M70 30 L30 70' stroke='%2300AEEF' stroke-width='1.5' opacity='0.4'/><circle cx='50' cy='50' r='12' fill='none' stroke='%2300AEEF' stroke-width='2'/><circle cx='50' cy='50' r='5' fill='%2300AEEF'/></svg>"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- Project by Gaurav Kumar & Ameen James — Revived 2026 -->
+    <!-- Project by Gaurav Kumar — Revived 2026 -->
 
     <!-- Scan Lines Overlay -->
     <div class="scanlines" aria-hidden="true"></div>
@@ -30,6 +30,7 @@
         <div class="boot-logo">J.A.R.V.I.S.</div>
         <div class="boot-text" id="bootText"></div>
         <div class="boot-bar"><div class="boot-progress" id="bootProgress"></div></div>
+        <button class="boot-init-btn" id="bootInitBtn">[ INITIALIZE ]</button>
       </div>
     </div>
 
@@ -37,7 +38,7 @@
     <header class="status-bar anim-slide-down">
       <div class="status-left">
         <span class="logo">J.A.R.V.I.S.</span>
-        <span class="version">v3.1</span>
+        <span class="version">v4.0</span>
         <span class="divider" aria-hidden="true"></span>
         <span class="system-label">SYSTEM ONLINE</span>
       </div>
@@ -64,39 +65,41 @@
         <div class="core-ring ring-2"></div>
         <div class="core-ring ring-3"></div>
         <div class="core-ring ring-4"></div>
+        <div class="core-ring ring-5"></div>
+        <div class="core-scan"></div>
         <div class="core-glow"></div>
         <div class="core-image">
           <img src="giphy.gif" alt="JARVIS Core" />
         </div>
         <!-- Tick marks on outer ring -->
-        <svg class="core-ticks" viewBox="0 0 260 260" aria-hidden="true">
-          <g stroke="rgba(93,152,166,0.28)" stroke-width="1">
+        <svg class="core-ticks" viewBox="0 0 280 280" aria-hidden="true">
+          <g stroke="rgba(0,174,239,0.30)" stroke-width="1">
             <!-- 12 major ticks every 30deg -->
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(0 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(30 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(60 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(90 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(120 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(150 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(180 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(210 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(240 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(270 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(300 130 130)" />
-            <line x1="130" y1="5"  x2="130" y2="18"  transform="rotate(330 130 130)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(0 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(30 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(60 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(90 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(120 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(150 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(180 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(210 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(240 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(270 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(300 140 140)" />
+            <line x1="140" y1="5"  x2="140" y2="18"  transform="rotate(330 140 140)" />
             <!-- 24 minor ticks every 15deg (offset by 15) -->
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(15 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(45 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(75 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(105 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(135 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(165 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(195 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(225 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(255 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(285 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(315 130 130)" />
-            <line x1="130" y1="5" x2="130" y2="12" stroke-width="0.5" transform="rotate(345 130 130)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(15 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(45 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(75 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(105 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(135 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(165 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(195 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(225 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(255 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(285 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(315 140 140)" />
+            <line x1="140" y1="5" x2="140" y2="12" stroke-width="0.5" transform="rotate(345 140 140)" />
           </g>
         </svg>
         <!-- Voice Wave Indicator -->
@@ -164,7 +167,7 @@
 
       <!-- Credits -->
       <p class="credits anim-fade-in-delayed">
-        Built by <strong>Gaurav Kumar</strong> &amp; <strong>Ameen James</strong>
+        Built by <strong>Gaurav Kumar</strong>
       </p>
     </div>
 
