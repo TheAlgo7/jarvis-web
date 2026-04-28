@@ -6,31 +6,42 @@
 
 class Jarvis {
   constructor() {
-    // DOM
-    this.micBtn = document.getElementById("micBtn");
-    this.textInput = document.getElementById("textInput");
-    this.sendBtn = document.getElementById("sendBtn");
-    this.conversation = document.getElementById("conversation");
-    this.voiceWave = document.getElementById("voiceWave");
-    this.bootOverlay = document.getElementById("bootOverlay");
-    this.bootText = document.getElementById("bootText");
-    this.bootProgress = document.getElementById("bootProgress");
-    this.statusBadge = document.getElementById("statusBadge");
-    this.clockEl = document.querySelector("#clock .status-value");
-    this.batteryEl = document.getElementById("battery");
-    this.networkEl = document.querySelector("#network .status-value");
+    // ---- DOM ----
+    this.micBtn        = document.getElementById("micBtn");
+    this.textInput     = document.getElementById("textInput");
+    this.sendBtn       = document.getElementById("sendBtn");
+    this.conversation  = document.getElementById("conversation");
+    this.voiceWave     = document.getElementById("voiceWave");
+    this.bootOverlay   = document.getElementById("bootOverlay");
+    this.bootText      = document.getElementById("bootText");
+    this.bootProgress  = document.getElementById("bootProgress");
+    this.statusBadge   = document.getElementById("statusBadge");
+    this.clockEl       = document.querySelector("#clock .status-value");
+    this.batteryEl     = document.getElementById("battery");
+    this.networkEl     = document.querySelector("#network .status-value");
+    // Sidebar
+    this.sidebar        = document.getElementById("sidebar");
+    this.sidebarOverlay = document.getElementById("sidebarOverlay");
+    this.sidebarToggle  = document.getElementById("sidebarToggle");
+    this.chatList       = document.getElementById("chatList");
 
-    // State
-    this.isListening = false;
-    this.isSpeaking = false;
-    this.recognition = null;
-    this.synth = window.speechSynthesis;
+    // ---- State ----
+    this.isListening    = false;
+    this.isSpeaking     = false;
+    this.recognition    = null;
+    this.synth          = window.speechSynthesis;
     this.preferredVoice = null;
-    this.notes = JSON.parse(localStorage.getItem("jarvis_notes") || "[]");
-    this.activeTimers = [];
-    this.userTitle = localStorage.getItem("jarvis_title") || "Sir";
+    this.notes          = JSON.parse(localStorage.getItem("jarvis_notes") || "[]");
+    this.activeTimers   = [];
+    this.userTitle      = localStorage.getItem("jarvis_title") || "Sir";
+    // Chat history
+    this.chats          = [];
+    this.currentChatId  = null;
+    this.currentMessages = [];
+    this.sidebarOpen    = false;
+    this._chatRestored  = false;
 
-    // Data
+    // ---- Data ----
     this.jokes = [
       "Why do programmers prefer dark mode? Because light attracts bugs.",
       "There are only 10 types of people in the world: those who understand binary and those who don't.",
@@ -76,53 +87,257 @@ class Jarvis {
     this.updateBattery();
     this.updateNetwork();
     this.loadVoice();
+    this.initChatHistory();
     this.boot();
   }
+
+  // ---- Chat History ----
+
+  loadChatIndex() {
+    try {
+      return JSON.parse(localStorage.getItem("jarvis_chats") || "[]");
+    } catch { return []; }
+  }
+
+  saveChatIndex() {
+    localStorage.setItem("jarvis_chats", JSON.stringify(this.chats));
+  }
+
+  loadChatMessages(id) {
+    try {
+      return JSON.parse(localStorage.getItem(`jarvis_chat_${id}`) || "[]");
+    } catch { return []; }
+  }
+
+  saveChatMessages(id, messages) {
+    localStorage.setItem(`jarvis_chat_${id}`, JSON.stringify(messages));
+  }
+
+  initChatHistory() {
+    this.chats = this.loadChatIndex();
+    const lastId = localStorage.getItem("jarvis_current");
+    const existing = lastId && this.chats.find((c) => c.id === lastId);
+
+    if (existing) {
+      this.currentChatId  = lastId;
+      this.currentMessages = this.loadChatMessages(lastId);
+      if (this.currentMessages.length > 0) {
+        this._chatRestored = true;
+        this.currentMessages.forEach((m) => {
+          this._renderMessage(m.content, m.role, m.time);
+        });
+        this.conversation.scrollTop = this.conversation.scrollHeight;
+      }
+    } else if (this.chats.length > 0) {
+      const first = this.chats[0];
+      this.currentChatId   = first.id;
+      this.currentMessages = this.loadChatMessages(first.id);
+      if (this.currentMessages.length > 0) {
+        this._chatRestored = true;
+        this.currentMessages.forEach((m) => {
+          this._renderMessage(m.content, m.role, m.time);
+        });
+        this.conversation.scrollTop = this.conversation.scrollHeight;
+      }
+    } else {
+      this._initFirstChat();
+    }
+
+    localStorage.setItem("jarvis_current", this.currentChatId);
+    this.renderChatList();
+  }
+
+  _initFirstChat() {
+    const id = `chat_${Date.now()}`;
+    this.chats = [{ id, title: "New Chat", updatedAt: Date.now(), messageCount: 0 }];
+    this.saveChatIndex();
+    this.currentChatId   = id;
+    this.currentMessages = [];
+  }
+
+  _updateChatMeta(sender, rawContent) {
+    const chat = this.chats.find((c) => c.id === this.currentChatId);
+    if (!chat) return;
+
+    chat.updatedAt    = Date.now();
+    chat.messageCount = this.currentMessages.length;
+
+    if (chat.title === "New Chat" && sender === "user") {
+      const plain = rawContent.replace(/<[^>]*>/g, "").trim();
+      chat.title = plain.length > 52 ? plain.substring(0, 49) + "..." : plain || "New Chat";
+    }
+
+    // Keep current chat at top of list
+    this.chats = [chat, ...this.chats.filter((c) => c.id !== this.currentChatId)];
+    this.saveChatIndex();
+    this.renderChatList();
+  }
+
+  createNewChat() {
+    const id   = `chat_${Date.now()}`;
+    const chat = { id, title: "New Chat", updatedAt: Date.now(), messageCount: 0 };
+    this.chats.unshift(chat);
+    this.saveChatIndex();
+    this.currentChatId   = id;
+    this.currentMessages = [];
+    localStorage.setItem("jarvis_current", id);
+    this.clearConversationUI();
+    this.renderChatList();
+    this.closeSidebar();
+
+    const greeting = this.getGreeting();
+    this.addMessage(greeting, "jarvis");
+    this.speak(greeting);
+  }
+
+  switchToChat(id) {
+    if (id === this.currentChatId) { this.closeSidebar(); return; }
+    this.currentChatId   = id;
+    this.currentMessages = this.loadChatMessages(id);
+    localStorage.setItem("jarvis_current", id);
+    this.clearConversationUI();
+    this.currentMessages.forEach((m) => this._renderMessage(m.content, m.role, m.time));
+    this.conversation.scrollTop = this.conversation.scrollHeight;
+    this.renderChatList();
+    this.closeSidebar();
+  }
+
+  deleteChat(id) {
+    this.chats = this.chats.filter((c) => c.id !== id);
+    localStorage.removeItem(`jarvis_chat_${id}`);
+    this.saveChatIndex();
+
+    if (id === this.currentChatId) {
+      if (this.chats.length > 0) {
+        this.switchToChat(this.chats[0].id);
+      } else {
+        this._initFirstChat();
+        this.clearConversationUI();
+        this.renderChatList();
+        const greeting = this.getGreeting();
+        this.addMessage(greeting, "jarvis");
+        this.speak(greeting);
+      }
+    } else {
+      this.renderChatList();
+    }
+  }
+
+  renameChat(id) {
+    const chat = this.chats.find((c) => c.id === id);
+    if (!chat) return;
+    const newTitle = prompt("Rename chat:", chat.title);
+    if (newTitle && newTitle.trim()) {
+      chat.title = newTitle.trim().substring(0, 60);
+      this.saveChatIndex();
+      this.renderChatList();
+    }
+  }
+
+  renderChatList(filter = "") {
+    const term     = filter.toLowerCase().trim();
+    const filtered = term
+      ? this.chats.filter((c) => c.title.toLowerCase().includes(term))
+      : this.chats;
+
+    this.chatList.innerHTML = "";
+
+    if (filtered.length === 0) {
+      this.chatList.innerHTML = `<div class="chat-empty">${term ? "No chats match." : "No chats yet."}</div>`;
+      return;
+    }
+
+    filtered.forEach((chat) => {
+      const item = document.createElement("div");
+      item.className = `chat-item${chat.id === this.currentChatId ? " active" : ""}`;
+      item.setAttribute("role", "listitem");
+
+      const date = new Date(chat.updatedAt).toLocaleDateString([], { month: "short", day: "numeric" });
+      const count = chat.messageCount || 0;
+
+      item.innerHTML = `
+        <div class="chat-item-main">
+          <div class="chat-item-title" title="${this.escapeHTML(chat.title)}">${this.escapeHTML(chat.title)}</div>
+          <div class="chat-item-meta">${date} &middot; ${count} msg${count !== 1 ? "s" : ""}</div>
+        </div>
+        <div class="chat-item-actions" role="group" aria-label="Chat actions">
+          <button class="chat-action-btn rename-btn" aria-label="Rename chat" title="Rename">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="chat-action-btn delete-btn" aria-label="Delete chat" title="Delete">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      `;
+
+      item.querySelector(".chat-item-main").addEventListener("click", () => this.switchToChat(chat.id));
+      item.querySelector(".rename-btn").addEventListener("click", (e) => { e.stopPropagation(); this.renameChat(chat.id); });
+      item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); this.deleteChat(chat.id); });
+
+      this.chatList.appendChild(item);
+    });
+  }
+
+  toggleSidebar() {
+    if (this.sidebarOpen) this.closeSidebar();
+    else this.openSidebar();
+  }
+
+  openSidebar() {
+    this.sidebarOpen = true;
+    this.sidebar.classList.add("open");
+    this.sidebarOverlay.classList.add("active");
+    this.sidebarToggle.setAttribute("aria-expanded", "true");
+  }
+
+  closeSidebar() {
+    this.sidebarOpen = false;
+    this.sidebar.classList.remove("open");
+    this.sidebarOverlay.classList.remove("active");
+    this.sidebarToggle.setAttribute("aria-expanded", "false");
+  }
+
+  clearConversationUI() {
+    this.conversation.innerHTML = "";
+  }
+
+  // ---- Voice Loading ----
 
   loadVoice() {
     const pickVoice = () => {
       const voices = this.synth.getVoices();
-
-      // en-GB male voices in preference order — targeting Paul Bettany's JARVIS register
-      // Names vary by browser/OS: Chrome, Edge (Neural), macOS, Windows Desktop
       const enGbMale = [
-        "Google UK English Male",  // Chrome
-        "Microsoft Ryan",          // Edge Neural — en-GB male
-        "Microsoft Alfie",         // Edge Neural — en-GB male
-        "Microsoft Oliver",        // Edge Neural — en-GB male
-        "Microsoft George",        // Windows — en-GB male
-        "Daniel",                  // macOS/iOS — en-GB
-        "Arthur",                  // macOS — en-GB (newer)
-        "Malcolm",                 // some Linux/Windows systems
+        "Google UK English Male",
+        "Microsoft Ryan",
+        "Microsoft Alfie",
+        "Microsoft Oliver",
+        "Microsoft George",
+        "Daniel",
+        "Arthur",
+        "Malcolm",
       ];
-
-      // 1. Try known en-GB male voices
       this.preferredVoice =
         voices.find((v) => enGbMale.some((name) => v.name.includes(name))) ||
-        // 2. Any en-GB voice
         voices.find((v) => v.lang === "en-GB") ||
-        // 3. Any English voice
         voices.find((v) => v.lang.startsWith("en")) ||
         voices[0];
     };
-
     pickVoice();
     if (this.synth.onvoiceschanged !== undefined) {
       this.synth.onvoiceschanged = pickVoice;
     }
   }
 
+  // ---- Speech Recognition ----
+
   setupSpeechRecognition() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      document.body.classList.add("no-speech");
-      return;
-    }
+    if (!SR) { document.body.classList.add("no-speech"); return; }
 
     this.recognition = new SR();
-    this.recognition.lang = "en-US";
-    this.recognition.interimResults = false;
-    this.recognition.continuous = false;
+    this.recognition.lang            = "en-US";
+    this.recognition.interimResults  = false;
+    this.recognition.continuous      = false;
 
     this.recognition.onresult = (event) => {
       const transcript = event.results[event.resultIndex][0].transcript;
@@ -134,42 +349,27 @@ class Jarvis {
     this.recognition.onerror = (event) => {
       this.stopListening();
       if (event.error === "no-speech") {
-        this.addMessage(
-          "I'm afraid I didn't catch that. Shall we try again?",
-          "jarvis"
-        );
+        this.addMessage("I didn't catch that. Shall we try again?", "jarvis");
       }
     };
 
-    this.recognition.onend = () => {
-      this.stopListening();
-    };
+    this.recognition.onend = () => this.stopListening();
   }
 
+  // ---- Event Listeners ----
+
   setupEventListeners() {
-    // Mic button
     this.micBtn.addEventListener("click", () => {
-      if (this.isListening) {
-        this.stopListening();
-      } else {
-        this.startListening();
-      }
+      if (this.isListening) this.stopListening();
+      else this.startListening();
     });
 
-    // Text input
     this.textInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        this.handleTextInput();
-      }
+      if (e.key === "Enter") { e.preventDefault(); this.handleTextInput(); }
     });
 
-    // Send button
-    this.sendBtn.addEventListener("click", () => {
-      this.handleTextInput();
-    });
+    this.sendBtn.addEventListener("click", () => this.handleTextInput());
 
-    // Quick actions
     document.querySelectorAll(".action-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         const command = chip.dataset.command;
@@ -177,12 +377,24 @@ class Jarvis {
         this.processCommand(command.toLowerCase());
       });
     });
+
+    // Sidebar
+    this.sidebarToggle.addEventListener("click", () => this.toggleSidebar());
+    this.sidebarOverlay.addEventListener("click", () => this.closeSidebar());
+    document.getElementById("sidebarClose").addEventListener("click", () => this.closeSidebar());
+    document.getElementById("newChatBtn").addEventListener("click", () => this.createNewChat());
+    document.getElementById("chatSearch").addEventListener("input", (e) => this.renderChatList(e.target.value));
+
+    // Escape key closes sidebar
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.sidebarOpen) this.closeSidebar();
+    });
   }
 
   handleTextInput() {
     const text = this.textInput.value.trim();
     if (!text) return;
-    this._bootGreeting = null; // cancel pending boot greeting if user types first
+    this._bootGreeting = null;
     this.textInput.value = "";
     this.addMessage(this.escapeHTML(text), "user");
     this.processCommand(text.toLowerCase());
@@ -198,7 +410,7 @@ class Jarvis {
       ["> Voice recognition: " + (this.recognition ? "ONLINE" : "UNAVAILABLE"), 58],
       ["> Network status: " + (navigator.onLine ? "CONNECTED" : "OFFLINE"), 72],
       ["> Memory: " + this.notes.length + " note(s) found.", 84],
-      ["> All systems operational.", 96],
+      ["> Chat history: " + this.chats.length + " conversation(s).", 96],
       ["", 96],
       [`Welcome, ${this.userTitle}.`, 100],
     ];
@@ -213,35 +425,28 @@ class Jarvis {
     this.bootOverlay.classList.add("hidden");
     await this.delay(400);
 
-    const greeting = this.getGreeting();
-    this.addMessage(greeting, "jarvis");
+    if (!this._chatRestored) {
+      const greeting = this.getGreeting();
+      this.addMessage(greeting, "jarvis");
 
-    // Browsers block speech synthesis until a user gesture.
-    // Store greeting and speak it on the user's first natural click or keypress.
-    this._bootGreeting = greeting;
-    const speakOnBoot = () => {
-      if (this._bootGreeting) {
-        this.speak(this._bootGreeting);
-        this._bootGreeting = null;
-      }
-    };
-    document.addEventListener("click",   speakOnBoot, { once: true, capture: true });
-    document.addEventListener("keydown", speakOnBoot, { once: true, capture: true });
+      this._bootGreeting = greeting;
+      const speakOnBoot = () => {
+        if (this._bootGreeting) { this.speak(this._bootGreeting); this._bootGreeting = null; }
+      };
+      document.addEventListener("click",   speakOnBoot, { once: true, capture: true });
+      document.addEventListener("keydown", speakOnBoot, { once: true, capture: true });
+    }
   }
 
   // ---- Speech ----
 
   speak(text) {
-    // Cancel any ongoing speech
     this.synth.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate  = 0.92;  // measured, deliberate — Paul Bettany's JARVIS cadence
-    utterance.pitch = 0.85;  // lower register — authoritative, not robotic
-    utterance.volume = 1;
-    if (this.preferredVoice) {
-      utterance.voice = this.preferredVoice;
-    }
+    const utterance    = new SpeechSynthesisUtterance(text);
+    utterance.rate     = 0.92;
+    utterance.pitch    = 0.85;
+    utterance.volume   = 1;
+    if (this.preferredVoice) utterance.voice = this.preferredVoice;
 
     utterance.onstart = () => {
       this.isSpeaking = true;
@@ -249,43 +454,35 @@ class Jarvis {
       this.voiceWave.classList.add("active");
       if (this.statusBadge) {
         this.statusBadge.textContent = "SPEAKING";
-        this.statusBadge.className = "status-badge speaking anim-fade-in";
+        this.statusBadge.className   = "status-badge speaking anim-fade-in";
       }
     };
 
-    utterance.onend = () => {
+    const onEnd = () => {
       this.isSpeaking = false;
       document.body.classList.remove("speaking");
       this.voiceWave.classList.remove("active");
       if (this.statusBadge) {
         this.statusBadge.textContent = "STANDBY";
-        this.statusBadge.className = "status-badge anim-fade-in";
+        this.statusBadge.className   = "status-badge anim-fade-in";
       }
     };
 
-    utterance.onerror = () => {
-      this.isSpeaking = false;
-      document.body.classList.remove("speaking");
-      this.voiceWave.classList.remove("active");
-      if (this.statusBadge) {
-        this.statusBadge.textContent = "STANDBY";
-        this.statusBadge.className = "status-badge anim-fade-in";
-      }
-    };
-
+    utterance.onend   = onEnd;
+    utterance.onerror = onEnd;
     this.synth.speak(utterance);
   }
 
   startListening() {
     if (!this.recognition) return;
-    this._bootGreeting = null; // cancel pending boot greeting
+    this._bootGreeting = null;
     this.synth.cancel();
     this.isListening = true;
     document.body.classList.add("listening");
     this.voiceWave.classList.add("active");
     if (this.statusBadge) {
       this.statusBadge.textContent = "LISTENING";
-      this.statusBadge.className = "status-badge listening anim-fade-in";
+      this.statusBadge.className   = "status-badge listening anim-fade-in";
     }
     this.recognition.start();
   }
@@ -296,28 +493,22 @@ class Jarvis {
     this.voiceWave.classList.remove("active");
     if (this.statusBadge && !this.isSpeaking) {
       this.statusBadge.textContent = "STANDBY";
-      this.statusBadge.className = "status-badge anim-fade-in";
+      this.statusBadge.className   = "status-badge anim-fade-in";
     }
-    try {
-      this.recognition?.stop();
-    } catch (e) {
-      /* already stopped */
-    }
+    try { this.recognition?.stop(); } catch (e) { /* already stopped */ }
   }
 
   // ---- UI ----
 
-  addMessage(text, sender = "jarvis") {
+  // Internal render only (no persistence) — used when loading saved chats
+  _renderMessage(text, sender, providedTime = null) {
     const msg = document.createElement("div");
     msg.className = `message ${sender}`;
 
     if (sender === "system") {
       msg.innerHTML = `<div class="message-body">${text}</div>`;
     } else {
-      const time = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const time = providedTime || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       msg.innerHTML = `
         <div class="message-header">
           <span class="sender">${sender === "jarvis" ? "JARVIS" : "You"}</span>
@@ -332,14 +523,36 @@ class Jarvis {
     return msg;
   }
 
+  addMessage(text, sender = "jarvis") {
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const msg  = this._renderMessage(text, sender, time);
+
+    // Persist (skip system messages and empty strings)
+    if (sender !== "system" && text && this.currentChatId) {
+      this.currentMessages.push({ role: sender, content: text, time });
+      this.saveChatMessages(this.currentChatId, this.currentMessages);
+      this._updateChatMeta(sender, text);
+    }
+
+    return msg;
+  }
+
   showThinking() {
-    const msg = this.addMessage("", "jarvis");
-    msg.querySelector(".message-body").innerHTML = `
-      <div class="thinking-dots">
-        <span></span><span></span><span></span>
+    const msg = document.createElement("div");
+    msg.className = "message jarvis";
+    msg.id = "thinking";
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    msg.innerHTML = `
+      <div class="message-header">
+        <span class="sender">JARVIS</span>
+        <span class="timestamp">${time}</span>
+      </div>
+      <div class="message-body">
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
       </div>
     `;
-    msg.id = "thinking";
+    this.conversation.appendChild(msg);
+    this.conversation.scrollTop = this.conversation.scrollHeight;
     return msg;
   }
 
@@ -352,7 +565,6 @@ class Jarvis {
     this.removeThinking();
     this.addMessage(text, "jarvis");
     if (alsoSpeak) {
-      // Strip HTML tags for speech
       const cleanText = text.replace(/<[^>]*>/g, "");
       this.speak(cleanText);
     }
@@ -363,9 +575,7 @@ class Jarvis {
   startClock() {
     const update = () => {
       this.clockEl.textContent = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
       });
     };
     update();
@@ -373,7 +583,7 @@ class Jarvis {
   }
 
   batteryIcon(level, charging) {
-    const fillW = Math.max(0, Math.min(12, (level / 100) * 12));
+    const fillW     = Math.max(0, Math.min(12, (level / 100) * 12));
     const fillColor = level <= 20 ? "#E84040" : "currentColor";
     const bolt = charging
       ? `<path d="M10 2.5L7 7h3.5l-1.5 3.5 4.5-5.5H10l1-2.5z" fill="#F5A623" stroke="none"/>`
@@ -385,16 +595,14 @@ class Jarvis {
     try {
       if (!navigator.getBattery) return;
       const battery = await navigator.getBattery();
-      const update = () => {
+      const update  = () => {
         const level = Math.round(battery.level * 100);
         this.batteryEl.innerHTML = `${this.batteryIcon(level, battery.charging)}<span class="status-value">${level}%</span>`;
       };
       update();
-      battery.addEventListener("levelchange", update);
+      battery.addEventListener("levelchange",   update);
       battery.addEventListener("chargingchange", update);
-    } catch (e) {
-      /* Battery API not available */
-    }
+    } catch (e) { /* Battery API not available */ }
   }
 
   updateNetwork() {
@@ -402,174 +610,57 @@ class Jarvis {
       this.networkEl.textContent = navigator.onLine ? "Online" : "Offline";
     };
     update();
-    window.addEventListener("online", update);
+    window.addEventListener("online",  update);
     window.addEventListener("offline", update);
   }
 
   // ---- Command Processing ----
 
   processCommand(input) {
-    // Title / address preference
-    if (/^(call me|address me as|refer to me as)\s+/.test(input)) {
-      return this.handleSetTitle(input);
-    }
-
-    // Greetings
-    if (/^(hello|hey|hi|howdy|greetings|good\s*(morning|afternoon|evening))/.test(input)) {
-      return this.handleGreeting();
-    }
-
-    // Identity
-    if (/who\s*are\s*you|what\s*are\s*you|your\s*name|about\s*yourself|introduce\s*yourself/.test(input)) {
-      return this.handleIdentity();
-    }
-
-    // Creator
-    if (/who\s*(made|created|built|developed)\s*you|your\s*(creator|developer|maker)/.test(input)) {
-      return this.handleCreator();
-    }
-
-    // Help
-    if (/what\s*can\s*you\s*do|help|commands|abilities|features/.test(input)) {
-      return this.handleHelp();
-    }
-
-    // Time
-    if (/what\s*time|current\s*time|time\s*(is\s*it|now|please)/.test(input)) {
-      return this.handleTime();
-    }
-
-    // Date
-    if (/what.*date|today.*date|what\s*day|current\s*date/.test(input)) {
-      return this.handleDate();
-    }
-
-    // Weather
-    if (/weather|temperature|forecast|how.*outside/.test(input)) {
-      return this.handleWeather();
-    }
-
-    // Calculator / Math — catches "calculate 2+2", "what is 10 * 5", "100/4", etc.
-    if (/^(calculate|compute|solve)\s+[\d\s+\-*/^.()%]+$/.test(input) ||
-        /^(what\s+is\s+)[\d\s+\-*/^.()%]+$/.test(input) ||
-        /^[\d\s+\-*/^.()%]+$/.test(input)) {
-      return this.handleMath(input);
-    }
-
-    // Open websites
-    if (/^open\s+/.test(input)) {
-      return this.handleOpenSite(input.replace(/^open\s+/, "").trim());
-    }
-
-    // Search
+    if (/^(call me|address me as|refer to me as)\s+/.test(input))           return this.handleSetTitle(input);
+    if (/^(hello|hey|hi|howdy|greetings|good\s*(morning|afternoon|evening))/.test(input)) return this.handleGreeting();
+    if (/who\s*are\s*you|what\s*are\s*you|your\s*name|about\s*yourself|introduce\s*yourself/.test(input)) return this.handleIdentity();
+    if (/who\s*(made|created|built|developed)\s*you|your\s*(creator|developer|maker)/.test(input)) return this.handleCreator();
+    if (/what\s*can\s*you\s*do|help|commands|abilities|features/.test(input)) return this.handleHelp();
+    if (/what\s*time|current\s*time|time\s*(is\s*it|now|please)/.test(input)) return this.handleTime();
+    if (/what.*date|today.*date|what\s*day|current\s*date/.test(input))        return this.handleDate();
+    if (/weather|temperature|forecast|how.*outside/.test(input))              return this.handleWeather();
+    if (
+      /^(calculate|compute|solve)\s+[\d\s+\-*/^.()%]+$/.test(input) ||
+      /^(what\s+is\s+)[\d\s+\-*/^.()%]+$/.test(input) ||
+      /^[\d\s+\-*/^.()%]+$/.test(input)
+    ) return this.handleMath(input);
+    if (/^open\s+/.test(input))                                              return this.handleOpenSite(input.replace(/^open\s+/, "").trim());
     if (/^(search|google|look\s*up)\s+/.test(input)) {
       const query = input.replace(/^(search|google|look\s*up)\s+(for\s+)?/, "").trim();
       return this.handleSearch(query);
     }
-
-    // YouTube search
     if (/^(play|youtube)\s+/.test(input)) {
       const query = input.replace(/^(play|youtube)\s+/, "").trim();
       return this.handleYouTubeSearch(query);
     }
-
-    // Wikipedia
-    if (/wikipedia/.test(input)) {
-      return this.handleWikipedia(input.replace(/wikipedia/, "").trim());
-    }
-
-    // Jokes
-    if (/joke|make\s*me\s*laugh|something\s*funny/.test(input)) {
-      return this.handleJoke();
-    }
-
-    // Quotes
-    if (/quote|inspire|motivation|wisdom/.test(input)) {
-      return this.handleQuote();
-    }
-
-    // Notes — save
+    if (/wikipedia/.test(input))                                              return this.handleWikipedia(input.replace(/wikipedia/, "").trim());
+    if (/joke|make\s*me\s*laugh|something\s*funny/.test(input))              return this.handleJoke();
+    if (/quote|inspire|motivation|wisdom/.test(input))                       return this.handleQuote();
     if (/^(save\s*note|remember|note\s*down|jot\s*down)\s+/.test(input)) {
       const note = input.replace(/^(save\s*note|remember|note\s*down|jot\s*down)\s+/, "").trim();
       return this.handleSaveNote(note);
     }
-
-    // Notes — read
-    if (/read.*notes|my\s*notes|show.*notes|list.*notes/.test(input)) {
-      return this.handleReadNotes();
-    }
-
-    // Notes — clear
-    if (/clear.*notes|delete.*notes|erase.*notes/.test(input)) {
-      return this.handleClearNotes();
-    }
-
-    // Battery
-    if (/battery/.test(input)) {
-      return this.handleBatteryInfo();
-    }
-
-    // Network
-    if (/network|internet|online|connectivity/.test(input)) {
-      return this.handleNetworkInfo();
-    }
-
-    // Password
-    if (/password|passkey/.test(input)) {
-      return this.handlePassword();
-    }
-
-    // Coin flip
-    if (/flip.*coin|coin.*flip|heads\s*or\s*tails/.test(input)) {
-      return this.handleCoinFlip();
-    }
-
-    // Dice roll
-    if (/roll.*dice|dice.*roll/.test(input)) {
-      return this.handleDiceRoll();
-    }
-
-    // Random number
-    if (/random\s*number/.test(input)) {
-      return this.handleRandomNumber(input);
-    }
-
-    // Timer
-    if (/set.*timer|timer.*for|remind\s*me\s*in/.test(input)) {
-      return this.handleTimer(input);
-    }
-
-    // Fullscreen
-    if (/full\s*screen/.test(input)) {
-      return this.handleFullscreen();
-    }
-
-    // How are you
-    if (/how\s*are\s*you|how.*doing|how.*feel/.test(input)) {
-      return this.handleHowAreYou();
-    }
-
-    // Thank you
-    if (/thank|thanks|appreciate/.test(input)) {
-      return this.handleThanks();
-    }
-
-    // Compliments
-    if (/you.*smart|good\s*job|well\s*done|you.*awesome|you.*amazing|you.*great/.test(input)) {
-      return this.handleCompliment();
-    }
-
-    // Goodbye
-    if (/bye|goodbye|see\s*you|shut\s*down|exit|sleep|good\s*night/.test(input)) {
-      return this.handleGoodbye();
-    }
-
-    // What is / Who is / Why / How — ask Groq instead of opening Google
-    if (/^(what|who|where|when|why|how)\s+/.test(input)) {
-      return this.askGroq(input);
-    }
-
-    // Fallback — ask Groq instead of opening Google
+    if (/read.*notes|my\s*notes|show.*notes|list.*notes/.test(input))        return this.handleReadNotes();
+    if (/clear.*notes|delete.*notes|erase.*notes/.test(input))               return this.handleClearNotes();
+    if (/battery/.test(input))                                                return this.handleBatteryInfo();
+    if (/network|internet|online|connectivity/.test(input))                  return this.handleNetworkInfo();
+    if (/password|passkey/.test(input))                                       return this.handlePassword();
+    if (/flip.*coin|coin.*flip|heads\s*or\s*tails/.test(input))             return this.handleCoinFlip();
+    if (/roll.*dice|dice.*roll/.test(input))                                  return this.handleDiceRoll();
+    if (/random\s*number/.test(input))                                        return this.handleRandomNumber(input);
+    if (/set.*timer|timer.*for|remind\s*me\s*in/.test(input))               return this.handleTimer(input);
+    if (/full\s*screen/.test(input))                                          return this.handleFullscreen();
+    if (/how\s*are\s*you|how.*doing|how.*feel/.test(input))                  return this.handleHowAreYou();
+    if (/thank|thanks|appreciate/.test(input))                               return this.handleThanks();
+    if (/you.*smart|good\s*job|well\s*done|you.*awesome|you.*amazing|you.*great/.test(input)) return this.handleCompliment();
+    if (/bye|goodbye|see\s*you|shut\s*down|exit|sleep|good\s*night/.test(input)) return this.handleGoodbye();
+    // Everything else goes to Groq (including what/who/why/how questions)
     this.askGroq(input);
   }
 
@@ -578,10 +669,19 @@ class Jarvis {
   async askGroq(question) {
     this.showThinking();
     try {
+      // Build conversation history for context (last 20 messages, HTML stripped)
+      const history = this.currentMessages
+        .slice(-20)
+        .filter((m) => m.role === "user" || m.role === "jarvis")
+        .map((m) => ({
+          role: m.role === "jarvis" ? "assistant" : "user",
+          content: m.content.replace(/<[^>]*>/g, "").trim(),
+        }));
+
       const res = await fetch(JARVIS_CONFIG.askEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, userTitle: this.userTitle }),
+        body: JSON.stringify({ messages: history, userTitle: this.userTitle }),
       });
 
       if (!res.ok) throw new Error(`API ${res.status}`);
@@ -602,9 +702,8 @@ class Jarvis {
   // ---- Command Handlers ----
 
   getGreeting() {
-    const hour = new Date().getHours();
-    const timeOfDay =
-      hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+    const hour      = new Date().getHours();
+    const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
     const greetings = [
       `Good ${timeOfDay}, ${this.userTitle}. All systems are operational.`,
       `Good ${timeOfDay}, ${this.userTitle}. J.A.R.V.I.S. online and awaiting your command.`,
@@ -625,9 +724,11 @@ class Jarvis {
 
   handleIdentity() {
     this.respond(
-      "I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. " +
-        "Your personal AI assistant, designed to handle queries, execute tasks, " +
-        `and generally keep things running smoothly. Currently at version 4.0, ${this.userTitle}.`
+      `I am J.A.R.V.I.S. — Just A Rather Very Intelligent System, ${this.userTitle}. ` +
+      "A web-based AI assistant built as a tribute project by Gaurav Kumar. I run on a large language model and can reason, write, analyse, debug, and advise on most topics. " +
+      "To be precise about what I am and am not: I remember everything within our current conversation, but nothing carries over to a new chat. " +
+      "I can read your battery level and online status from the browser, but I have no access to CPU, RAM, uptime, files, email, your calendar, or any application — and I cannot take actions on your system. " +
+      "I don't browse the live web. What I offer is reasoning, not real-time data. Version 4.0."
     );
   }
 
@@ -637,9 +738,7 @@ class Jarvis {
       .trim()
       .replace(/[^a-zA-Z'\s-]/g, "")
       .trim();
-    if (!raw) {
-      return this.respond(`I'll need a title to use, ${this.userTitle}.`);
-    }
+    if (!raw) return this.respond(`I'll need a title to use, ${this.userTitle}.`);
     const title = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
     this.userTitle = title;
     localStorage.setItem("jarvis_title", title);
@@ -649,200 +748,131 @@ class Jarvis {
   handleCreator() {
     this.respond(
       "Originally built as a college project by Gaurav Kumar and Ameen James. " +
-        "Revived and upgraded to the current iteration solo by Gaurav Kumar, several years later. " +
-        "Version 4.0, I'm pleased to report."
+      "Revived and upgraded to the current iteration solo by Gaurav Kumar, several years later. " +
+      "Version 4.0, I'm pleased to report."
     );
   }
 
   handleHelp() {
-    const help = `Here's what I can do for you, Sir:<br><br>
-      <strong>General:</strong> greetings, time, date, weather<br>
+    const help = `Here's what I can do for you, ${this.userTitle}:<br><br>
+      <strong>Conversation & AI:</strong> questions, reasoning, coding, writing, analysis — with full in-session memory<br>
+      <strong>General:</strong> time, date, weather<br>
       <strong>Search:</strong> "search [query]", "open [website]", "play [video]", "wikipedia [topic]"<br>
       <strong>Tools:</strong> calculator, password generator, coin flip, dice roll, timer<br>
       <strong>Notes:</strong> "save note [text]", "read my notes", "clear notes"<br>
-      <strong>System:</strong> battery status, network info, fullscreen<br>
+      <strong>System:</strong> battery status (live), network status (live), fullscreen<br>
       <strong>Fun:</strong> jokes, motivational quotes<br><br>
+      <strong>What I cannot do:</strong><br>
+      &bull; Browse the internet or access live data<br>
+      &bull; Remember anything across separate conversations<br>
+      &bull; Access your files, email, calendar, or applications<br>
+      &bull; Execute code or take actions on your system<br>
+      &bull; Report CPU usage, RAM, uptime, or precise network speed — I only have battery level and online/offline status from the browser<br><br>
       You can speak or type your commands.`;
     this.respond(help, false);
-    this.speak(`Here's an overview of my capabilities, ${this.userTitle}. I can handle search, tools, notes, system info, and more. Just ask.`);
+    this.speak(`Here's an overview of my capabilities, ${this.userTitle}. I can handle search, tools, notes, live battery and network status, AI conversation, and more. I should note I cannot browse the web, access files, or remember things between separate chats.`);
   }
 
   handleTime() {
-    const time = new Date().toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
     this.respond(`The current time is <strong>${time}</strong>, ${this.userTitle}.`);
   }
 
   handleDate() {
-    const now = new Date();
-    const date = now.toLocaleDateString(undefined, {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const date = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     this.respond(`Today is <strong>${date}</strong>, ${this.userTitle}.`);
   }
 
   async handleWeather() {
     this.showThinking();
     try {
-      const response = await fetch("https://wttr.in/?format=j1", {
-        headers: { Accept: "application/json" },
-      });
+      const response = await fetch("https://wttr.in/?format=j1", { headers: { Accept: "application/json" } });
       if (!response.ok) throw new Error("API error");
-      const data = await response.json();
+      const data    = await response.json();
       const current = data.current_condition[0];
-      const area = data.nearest_area[0];
-      const city = area.areaName[0].value;
+      const area    = data.nearest_area[0];
+      const city    = area.areaName[0].value;
       const country = area.country[0].value;
-      const temp = current.temp_C;
-      const feelsLike = current.FeelsLikeC;
-      const desc = current.weatherDesc[0].value;
-      const humidity = current.humidity;
-      const wind = current.windspeedKmph;
-
       this.respond(
         `Weather for <strong>${city}, ${country}</strong>:<br>` +
-          `${desc}, <strong>${temp}°C</strong> (feels like ${feelsLike}°C)<br>` +
-          `Humidity: ${humidity}% | Wind: ${wind} km/h`
+        `${current.weatherDesc[0].value}, <strong>${current.temp_C}°C</strong> (feels like ${current.FeelsLikeC}°C)<br>` +
+        `Humidity: ${current.humidity}% | Wind: ${current.windspeedKmph} km/h`
       );
     } catch (e) {
-      this.respond(
-        `I'm afraid weather data is unavailable at the moment. You may wish to check your connection, ${this.userTitle}.`
-      );
+      this.respond(`Weather data is unavailable at the moment. You may wish to check your connection, ${this.userTitle}.`);
     }
   }
 
   handleMath(input) {
     try {
-      const expression = input
-        .replace(/^(calculate|compute|solve|what\s*is)\s+/, "")
-        .trim();
-      // Only allow safe math characters
-      const sanitized = expression.replace(/[^0-9+\-*/.()%\s]/g, "");
-      if (!sanitized || sanitized.length === 0) {
-        return this.respond("I'll need a valid expression to compute, Sir.");
-      }
+      const expression = input.replace(/^(calculate|compute|solve|what\s*is)\s+/, "").trim();
+      const sanitized  = expression.replace(/[^0-9+\-*/.()%\s]/g, "");
+      if (!sanitized) return this.respond("I'll need a valid expression to compute, Sir.");
       const result = Function('"use strict"; return (' + sanitized + ")")();
       if (typeof result !== "number" || !isFinite(result)) {
-        return this.respond("I'm afraid that expression doesn't resolve to a number.");
+        return this.respond("That expression doesn't resolve to a finite number.");
       }
-      this.respond(
-        `<strong>${sanitized}</strong> = <strong>${result}</strong>`
-      );
+      this.respond(`<strong>${sanitized}</strong> = <strong>${result}</strong>`);
     } catch (e) {
-      this.respond(
-        "I'm afraid I couldn't evaluate that. Perhaps a simpler expression?"
-      );
+      this.respond("That expression couldn't be evaluated. Perhaps a simpler form?");
     }
   }
 
   handleOpenSite(site) {
     const sites = {
-      google: "https://google.com",
-      youtube: "https://youtube.com",
-      github: "https://github.com",
-      stackoverflow: "https://stackoverflow.com",
-      linkedin: "https://linkedin.com",
-      twitter: "https://twitter.com",
-      x: "https://x.com",
-      instagram: "https://instagram.com",
-      facebook: "https://facebook.com",
-      reddit: "https://reddit.com",
-      spotify: "https://spotify.com",
-      netflix: "https://netflix.com",
-      amazon: "https://amazon.com",
-      whatsapp: "https://web.whatsapp.com",
-      gmail: "https://mail.google.com",
-      chatgpt: "https://chat.openai.com",
-      claude: "https://claude.ai",
-      maps: "https://maps.google.com",
-      drive: "https://drive.google.com",
-      notion: "https://notion.so",
-      figma: "https://figma.com",
-      canva: "https://canva.com",
+      google: "https://google.com", youtube: "https://youtube.com", github: "https://github.com",
+      stackoverflow: "https://stackoverflow.com", linkedin: "https://linkedin.com",
+      twitter: "https://twitter.com", x: "https://x.com", instagram: "https://instagram.com",
+      facebook: "https://facebook.com", reddit: "https://reddit.com", spotify: "https://spotify.com",
+      netflix: "https://netflix.com", amazon: "https://amazon.com", whatsapp: "https://web.whatsapp.com",
+      gmail: "https://mail.google.com", chatgpt: "https://chat.openai.com", claude: "https://claude.ai",
+      maps: "https://maps.google.com", drive: "https://drive.google.com", notion: "https://notion.so",
+      figma: "https://figma.com", canva: "https://canva.com",
     };
-
     const key = site.toLowerCase().replace(/\s+/g, "");
     if (sites[key]) {
       window.open(sites[key], "_blank");
       this.respond(`Opening <strong>${site}</strong>, ${this.userTitle}.`);
     } else {
-      // Try opening as a URL
       const url = site.includes(".") ? `https://${site}` : null;
       if (url) {
         window.open(url, "_blank");
         this.respond(`Opening <strong>${site}</strong>, ${this.userTitle}.`);
       } else {
-        this.respond(
-          `I'm afraid I don't recognise that one. Perhaps try "open google" or "open youtube"?`
-        );
+        this.respond(`I don't recognise that one. Try "open google" or "open youtube"?`);
       }
     }
   }
 
   handleSearch(query) {
-    window.open(
-      `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-      "_blank"
-    );
-    this.respond(
-      `Searching Google for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`
-    );
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
+    this.respond(`Searching Google for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`);
   }
 
   handleYouTubeSearch(query) {
-    window.open(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
-      "_blank"
-    );
-    this.respond(
-      `Searching YouTube for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`
-    );
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, "_blank");
+    this.respond(`Searching YouTube for "<strong>${this.escapeHTML(query)}</strong>", ${this.userTitle}.`);
   }
 
   handleWikipedia(query) {
     const term = query.replace(/^(search|for|about)\s+/i, "").trim() || "Main_Page";
-    window.open(
-      `https://en.wikipedia.org/wiki/${encodeURIComponent(term)}`,
-      "_blank"
-    );
-    this.respond(
-      `Opening Wikipedia article on "<strong>${this.escapeHTML(term)}</strong>", ${this.userTitle}.`
-    );
+    window.open(`https://en.wikipedia.org/wiki/${encodeURIComponent(term)}`, "_blank");
+    this.respond(`Opening Wikipedia article on "<strong>${this.escapeHTML(term)}</strong>", ${this.userTitle}.`);
   }
 
-  handleJoke() {
-    const joke = this.pickRandom(this.jokes);
-    this.respond(joke);
-  }
-
-  handleQuote() {
-    const quote = this.pickRandom(this.quotes);
-    this.respond(`"${quote}"`);
-  }
+  handleJoke()  { this.respond(this.pickRandom(this.jokes)); }
+  handleQuote() { this.respond(`"${this.pickRandom(this.quotes)}"`); }
 
   handleSaveNote(note) {
-    this.notes.push({
-      text: note,
-      time: new Date().toLocaleString(),
-    });
+    this.notes.push({ text: note, time: new Date().toLocaleString() });
     localStorage.setItem("jarvis_notes", JSON.stringify(this.notes));
-    this.respond(
-      `Note saved, ${this.userTitle}. You now have <strong>${this.notes.length}</strong> note${this.notes.length !== 1 ? "s" : ""}.`
-    );
+    this.respond(`Note saved, ${this.userTitle}. You now have <strong>${this.notes.length}</strong> note${this.notes.length !== 1 ? "s" : ""}.`);
   }
 
   handleReadNotes() {
-    if (this.notes.length === 0) {
-      return this.respond(`You don't have any notes yet, ${this.userTitle}.`);
-    }
+    if (this.notes.length === 0) return this.respond(`You have no notes yet, ${this.userTitle}.`);
     const notesList = this.notes
-      .map((n, i) => `<strong>${i + 1}.</strong> ${this.escapeHTML(n.text)} <span style="color: var(--text-dim); font-size: 0.75rem;">(${n.time})</span>`)
+      .map((n, i) => `<strong>${i + 1}.</strong> ${this.escapeHTML(n.text)} <span style="color:var(--text-dim);font-size:0.75rem;">(${n.time})</span>`)
       .join("<br>");
     this.respond(`Your notes, ${this.userTitle}:<br><br>${notesList}`, false);
     this.speak(`You have ${this.notes.length} note${this.notes.length !== 1 ? "s" : ""}, ${this.userTitle}.`);
@@ -850,7 +880,7 @@ class Jarvis {
 
   handleClearNotes() {
     const count = this.notes.length;
-    this.notes = [];
+    this.notes  = [];
     localStorage.removeItem("jarvis_notes");
     this.respond(
       count > 0
@@ -861,128 +891,75 @@ class Jarvis {
 
   async handleBatteryInfo() {
     try {
-      if (!navigator.getBattery) {
-        return this.respond(
-          "I'm afraid battery information isn't available in this browser."
-        );
-      }
-      const battery = await navigator.getBattery();
-      const level = Math.round(battery.level * 100);
+      if (!navigator.getBattery) return this.respond("Battery information isn't available in this browser.");
+      const battery  = await navigator.getBattery();
+      const level    = Math.round(battery.level * 100);
       const charging = battery.charging;
       const timeLeft = charging
-        ? battery.chargingTime !== Infinity
-          ? `Full charge in ${Math.round(battery.chargingTime / 60)} minutes.`
-          : ""
-        : battery.dischargingTime !== Infinity
-          ? `Approximately ${Math.round(battery.dischargingTime / 60)} minutes remaining.`
-          : "";
-
-      this.respond(
-        `Battery level: <strong>${level}%</strong> ${charging ? "(Charging)" : "(On battery)"}. ${timeLeft}`
-      );
+        ? battery.chargingTime !== Infinity ? `Full charge in ${Math.round(battery.chargingTime / 60)} minutes.` : ""
+        : battery.dischargingTime !== Infinity ? `Approximately ${Math.round(battery.dischargingTime / 60)} minutes remaining.` : "";
+      this.respond(`Battery level: <strong>${level}%</strong> ${charging ? "(Charging)" : "(On battery)"}. ${timeLeft}`);
     } catch (e) {
-      this.respond(
-        "I'm afraid I couldn't access battery data."
-      );
+      this.respond("Battery data couldn't be accessed.");
     }
   }
 
   handleNetworkInfo() {
-    const online = navigator.onLine;
-    let info = `You are currently <strong>${online ? "online" : "offline"}</strong>.`;
-
+    let info = `You are currently <strong>${navigator.onLine ? "online" : "offline"}</strong>.`;
     if (navigator.connection) {
       const conn = navigator.connection;
-      if (conn.effectiveType)
-        info += ` Connection type: <strong>${conn.effectiveType.toUpperCase()}</strong>.`;
-      if (conn.downlink)
-        info += ` Speed: ~${conn.downlink} Mbps.`;
+      if (conn.effectiveType) info += ` Connection type: <strong>${conn.effectiveType.toUpperCase()}</strong>.`;
+      if (conn.downlink)      info += ` Browser-estimated speed: ~${conn.downlink} Mbps (this is an approximation, not a speed test).`;
     }
-
+    info += ` Note: I only have access to online/offline status and the browser's connection hint — I cannot measure actual throughput or ping.`;
     this.respond(info);
   }
 
   handlePassword() {
-    const chars =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_-+=";
-    const length = 16;
-    let password = "";
-    const array = new Uint32Array(length);
+    const chars    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_-+=";
+    const length   = 16;
+    let password   = "";
+    const array    = new Uint32Array(length);
     crypto.getRandomValues(array);
-    for (let i = 0; i < length; i++) {
-      password += chars[array[i] % chars.length];
-    }
-
+    for (let i = 0; i < length; i++) password += chars[array[i] % chars.length];
     navigator.clipboard.writeText(password).catch(() => {});
-    this.respond(
-      `Here's a secure 16-character password:<br><code>${password}</code><br>Copied to clipboard, ${this.userTitle}.`
-    );
+    this.respond(`Here's a secure 16-character password:<br><code>${password}</code><br>Copied to clipboard, ${this.userTitle}.`);
   }
 
   handleCoinFlip() {
-    const result = Math.random() < 0.5 ? "Heads" : "Tails";
-    this.respond(`The coin shows <strong>${result}</strong>, ${this.userTitle}.`);
+    this.respond(`The coin shows <strong>${Math.random() < 0.5 ? "Heads" : "Tails"}</strong>, ${this.userTitle}.`);
   }
 
   handleDiceRoll() {
-    const result = Math.floor(Math.random() * 6) + 1;
-    this.respond(`You rolled a <strong>${result}</strong>, ${this.userTitle}.`);
+    this.respond(`You rolled a <strong>${Math.floor(Math.random() * 6) + 1}</strong>, ${this.userTitle}.`);
   }
 
   handleRandomNumber(input) {
     const nums = input.match(/\d+/g);
-    let min = 1,
-      max = 100;
-    if (nums && nums.length >= 2) {
-      min = parseInt(nums[0]);
-      max = parseInt(nums[1]);
-    } else if (nums && nums.length === 1) {
-      max = parseInt(nums[0]);
-    }
+    let min = 1, max = 100;
+    if (nums && nums.length >= 2) { min = parseInt(nums[0]); max = parseInt(nums[1]); }
+    else if (nums && nums.length === 1) { max = parseInt(nums[0]); }
     const result = Math.floor(Math.random() * (max - min + 1)) + min;
-    this.respond(
-      `Random number between ${min} and ${max}: <strong>${result}</strong>.`
-    );
+    this.respond(`Random number between ${min} and ${max}: <strong>${result}</strong>.`);
   }
 
   handleTimer(input) {
     const match = input.match(/(\d+)\s*(second|sec|minute|min|hour|hr)/i);
-    if (!match) {
-      return this.respond(
-        'I\'ll need a duration to work with, Sir. For example — "set timer for 5 minutes".'
-      );
-    }
+    if (!match) return this.respond(`I'll need a duration. For example — "set timer for 5 minutes".`);
 
-    let value = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
-    let ms;
-
-    if (unit.startsWith("sec")) {
-      ms = value * 1000;
-    } else if (unit.startsWith("min")) {
-      ms = value * 60 * 1000;
-    } else {
-      ms = value * 3600 * 1000;
-    }
-
-    const unitLabel = unit.startsWith("sec")
-      ? "second"
-      : unit.startsWith("min")
-        ? "minute"
-        : "hour";
-    const label = `${value} ${unitLabel}${value !== 1 ? "s" : ""}`;
+    const value     = parseInt(match[1]);
+    const unit      = match[2].toLowerCase();
+    const ms        = unit.startsWith("sec") ? value * 1000 : unit.startsWith("min") ? value * 60000 : value * 3600000;
+    const unitLabel = unit.startsWith("sec") ? "second" : unit.startsWith("min") ? "minute" : "hour";
+    const label     = `${value} ${unitLabel}${value !== 1 ? "s" : ""}`;
 
     this.respond(`Timer set for <strong>${label}</strong>. I'll notify you when it's done, ${this.userTitle}.`);
 
     const timerId = setTimeout(() => {
       this.respond(`Timer complete! <strong>${label}</strong> have elapsed, ${this.userTitle}.`);
       this.speak(`${this.userTitle}, your ${label} timer is complete.`);
-
-      // Browser notification
       if (Notification.permission === "granted") {
-        new Notification("J.A.R.V.I.S. Timer", {
-          body: `${label} timer complete!`,
-        });
+        new Notification("J.A.R.V.I.S. Timer", { body: `${label} timer complete!` });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission();
       }
@@ -1005,7 +982,7 @@ class Jarvis {
     const responses = [
       `All systems are running optimally. Thank you for asking, ${this.userTitle}.`,
       "Operating within normal parameters. Ready for any task.",
-      "I'm functioning at full capacity. How may I assist?",
+      "Functioning at full capacity. How may I assist?",
       `Never better. My circuits are rather content, ${this.userTitle}.`,
     ];
     this.respond(this.pickRandom(responses));
@@ -1025,7 +1002,7 @@ class Jarvis {
     const responses = [
       `You're most kind, ${this.userTitle}. I'm only as capable as my programming allows.`,
       "Thank you. I do try to maintain standards.",
-      `I appreciate that, ${this.userTitle}. Your satisfaction is, as always, the primary directive.`,
+      `I appreciate that, ${this.userTitle}. Your satisfaction is the primary directive.`,
       "Thank you. I'll note that in my performance log.",
     ];
     this.respond(this.pickRandom(responses));
@@ -1043,9 +1020,7 @@ class Jarvis {
 
   // ---- Utilities ----
 
-  pickRandom(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
+  pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   escapeHTML(str) {
     const div = document.createElement("div");
@@ -1053,12 +1028,8 @@ class Jarvis {
     return div.innerHTML;
   }
 
-  delay(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+  delay(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 }
 
 // ---- Launch ----
-document.addEventListener("DOMContentLoaded", () => {
-  new Jarvis();
-});
+document.addEventListener("DOMContentLoaded", () => { new Jarvis(); });
