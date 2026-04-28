@@ -627,7 +627,7 @@ class Jarvis {
     this.respond(
       "I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. " +
         "Your personal AI assistant, designed to handle queries, execute tasks, " +
-        `and generally keep things running smoothly. Currently at version 3.1, ${this.userTitle}.`
+        `and generally keep things running smoothly. Currently at version 4.0, ${this.userTitle}.`
     );
   }
 
