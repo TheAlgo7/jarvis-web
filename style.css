@@ -150,32 +150,6 @@ body::after {
   transition: width 0.2s ease;
 }
 
-.boot-init-btn {
-  display: none;
-  background: transparent;
-  border: 1px solid var(--primary);
-  color: var(--primary);
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  letter-spacing: 0.25em;
-  padding: 0.65rem 2rem;
-  cursor: pointer;
-  margin-top: 0.5rem;
-  animation: pulseGlow 1.4s ease-in-out infinite;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.boot-init-btn:hover,
-.boot-init-btn:focus-visible {
-  background: var(--primary);
-  color: var(--bg);
-  outline: none;
-}
-
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 6px var(--primary-glow); }
-  50%       { box-shadow: 0 0 18px var(--primary-glow), 0 0 30px var(--primary-glow); }
-}
 
 /* ---- Status Bar ---- */
 
@@ -998,10 +972,5 @@ body.no-speech .mic-btn { display: none; }
 
   .boot-progress {
     transition: none;
-  }
-
-  .boot-init-btn {
-    animation: none;
-    box-shadow: 0 0 6px var(--primary-glow);
   }
 }

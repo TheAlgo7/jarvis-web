@@ -182,6 +182,7 @@ class Jarvis {
   handleTextInput() {
     const text = this.textInput.value.trim();
     if (!text) return;
+    this._bootGreeting = null; // cancel pending boot greeting if user types first
     this.textInput.value = "";
     this.addMessage(this.escapeHTML(text), "user");
     this.processCommand(text.toLowerCase());
@@ -209,21 +210,23 @@ class Jarvis {
     }
 
     await this.delay(700);
-
-    // Browsers block speech synthesis until a user gesture. Show INITIALIZE button
-    // so the click becomes the required interaction before audio is attempted.
-    const initBtn = document.getElementById("bootInitBtn");
-    initBtn.style.display = "block";
-    await new Promise((resolve) => {
-      initBtn.addEventListener("click", resolve, { once: true });
-    });
-
     this.bootOverlay.classList.add("hidden");
     await this.delay(400);
 
     const greeting = this.getGreeting();
     this.addMessage(greeting, "jarvis");
-    this.speak(greeting);
+
+    // Browsers block speech synthesis until a user gesture.
+    // Store greeting and speak it on the user's first natural click or keypress.
+    this._bootGreeting = greeting;
+    const speakOnBoot = () => {
+      if (this._bootGreeting) {
+        this.speak(this._bootGreeting);
+        this._bootGreeting = null;
+      }
+    };
+    document.addEventListener("click",   speakOnBoot, { once: true, capture: true });
+    document.addEventListener("keydown", speakOnBoot, { once: true, capture: true });
   }
 
   // ---- Speech ----
@@ -275,6 +278,7 @@ class Jarvis {
 
   startListening() {
     if (!this.recognition) return;
+    this._bootGreeting = null; // cancel pending boot greeting
     this.synth.cancel();
     this.isListening = true;
     document.body.classList.add("listening");
@@ -644,9 +648,9 @@ class Jarvis {
 
   handleCreator() {
     this.respond(
-      "Built by Gaurav Kumar — initially as a college project, " +
-        "then revived and upgraded to the current iteration. " +
-        "Version 3.1, I'm pleased to report."
+      "Originally built as a college project by Gaurav Kumar and Ameen James. " +
+        "Revived and upgraded to the current iteration solo by Gaurav Kumar, several years later. " +
+        "Version 4.0, I'm pleased to report."
     );
   }
 
