@@ -86,8 +86,7 @@ export default async function handler(req, res) {
     });
 
     if (!groqRes.ok) {
-      const text = await groqRes.text();
-      return res.status(groqRes.status).json({ error: text });
+      return res.status(502).json({ error: "AI backend unavailable" });
     }
 
     const data = await groqRes.json();

@@ -1088,6 +1088,19 @@ body.no-speech .mic-btn { display: none; }
   color: var(--text-bright);
 }
 
+.chat-rename-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--primary-dim);
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.2px;
+  outline: none;
+  padding: 0;
+}
+
 .chat-item-meta {
   font-size: 0.62rem;
   color: var(--text-dim);

@@ -32,7 +32,6 @@ class Jarvis {
     this.synth          = window.speechSynthesis;
     this.preferredVoice = null;
     this.notes          = JSON.parse(localStorage.getItem("jarvis_notes") || "[]");
-    this.activeTimers   = [];
     this.userTitle      = localStorage.getItem("jarvis_title") || "Sir";
     // Chat history
     this.chats          = [];
@@ -226,12 +225,38 @@ class Jarvis {
   renameChat(id) {
     const chat = this.chats.find((c) => c.id === id);
     if (!chat) return;
-    const newTitle = prompt("Rename chat:", chat.title);
-    if (newTitle && newTitle.trim()) {
-      chat.title = newTitle.trim().substring(0, 60);
-      this.saveChatIndex();
+    const item = this.chatList.querySelector(`[data-chat-id="${id}"]`);
+    if (!item) return;
+    const titleEl = item.querySelector(".chat-item-title");
+    if (!titleEl) return;
+
+    const input = document.createElement("input");
+    input.className  = "chat-rename-input";
+    input.value      = chat.title;
+    input.maxLength  = 60;
+    input.setAttribute("aria-label", "Rename chat");
+
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      const val = input.value.trim();
+      if (val) {
+        chat.title = val.substring(0, 60);
+        this.saveChatIndex();
+      }
       this.renderChatList();
-    }
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter")  { e.preventDefault(); commit(); }
+      if (e.key === "Escape") { committed = true; this.renderChatList(); }
+    });
+    input.addEventListener("blur", commit);
+
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
   }
 
   renderChatList(filter = "") {
@@ -255,6 +280,7 @@ class Jarvis {
       const date = new Date(chat.updatedAt).toLocaleDateString([], { month: "short", day: "numeric" });
       const count = chat.messageCount || 0;
 
+      item.dataset.chatId = chat.id;
       item.innerHTML = `
         <div class="chat-item-main">
           <div class="chat-item-title" title="${this.escapeHTML(chat.title)}">${this.escapeHTML(chat.title)}</div>
@@ -806,9 +832,11 @@ class Jarvis {
   handleMath(input) {
     try {
       const expression = input.replace(/^(calculate|compute|solve|what\s*is)\s+/, "").trim();
-      const sanitized  = expression.replace(/[^0-9+\-*/.()%\s]/g, "");
-      if (!sanitized) return this.respond("I'll need a valid expression to compute, Sir.");
-      const result = Function('"use strict"; return (' + sanitized + ")")();
+      const sanitized  = expression.replace(/\s+/g, "");
+      if (!sanitized || !/^[\d+\-*/.()%]+$/.test(sanitized)) {
+        return this.respond("I'll need a valid expression to compute, Sir.");
+      }
+      const result = this._evalMath(sanitized);
       if (typeof result !== "number" || !isFinite(result)) {
         return this.respond("That expression doesn't resolve to a finite number.");
       }
@@ -816,6 +844,59 @@ class Jarvis {
     } catch (e) {
       this.respond("That expression couldn't be evaluated. Perhaps a simpler form?");
     }
+  }
+
+  _evalMath(expr) {
+    let i = 0;
+
+    const parseExpr  = () => parseAddSub();
+
+    const parseAddSub = () => {
+      let v = parseMulDiv();
+      while (i < expr.length && (expr[i] === "+" || expr[i] === "-")) {
+        const op = expr[i++];
+        v = op === "+" ? v + parseMulDiv() : v - parseMulDiv();
+      }
+      return v;
+    };
+
+    const parseMulDiv = () => {
+      let v = parseUnary();
+      while (i < expr.length && (expr[i] === "*" || expr[i] === "/" || expr[i] === "%")) {
+        const op = expr[i++];
+        const r  = parseUnary();
+        v = op === "*" ? v * r : op === "/" ? v / r : v % r;
+      }
+      return v;
+    };
+
+    const parseUnary = () => {
+      if (expr[i] === "-") { i++; return -parseAtom(); }
+      if (expr[i] === "+") { i++; return  parseAtom(); }
+      return parseAtom();
+    };
+
+    const parseAtom = () => {
+      if (expr[i] === "(") {
+        i++;
+        const v = parseExpr();
+        if (expr[i] !== ")") throw new Error("Expected )");
+        i++;
+        return v;
+      }
+      return parseNum();
+    };
+
+    const parseNum = () => {
+      let num = "";
+      while (i < expr.length && /[\d.]/.test(expr[i])) num += expr[i++];
+      if (!num) throw new Error("Expected number");
+      return parseFloat(num);
+    };
+
+    const result = parseExpr();
+    if (i !== expr.length) throw new Error("Unexpected character");
+    return result;
   }
 
   handleOpenSite(site) {
@@ -955,7 +1036,7 @@ class Jarvis {
 
     this.respond(`Timer set for <strong>${label}</strong>. I'll notify you when it's done, ${this.userTitle}.`);
 
-    const timerId = setTimeout(() => {
+    setTimeout(() => {
       this.respond(`Timer complete! <strong>${label}</strong> have elapsed, ${this.userTitle}.`);
       this.speak(`${this.userTitle}, your ${label} timer is complete.`);
       if (Notification.permission === "granted") {
@@ -964,8 +1045,6 @@ class Jarvis {
         Notification.requestPermission();
       }
     }, ms);
-
-    this.activeTimers.push(timerId);
   }
 
   handleFullscreen() {

@@ -21,6 +21,7 @@ JARVIS is a browser assistant that puts personality and interface design on equa
 - **Utility commands** for search, notes, quick actions, and browser workflows.
 - **Weather and lightweight live data** integration.
 - **Persistent local notes** without needing a user account.
+- **Multi-session chat history** — sidebar with search, rename, and delete across sessions.
 - **A distinct personality layer** instead of sterile assistant output.
 
 ## How It Works
@@ -40,12 +41,13 @@ This split means the HUD loads instantly, local commands work offline, and the A
 | UI | HTML, CSS, Vanilla JavaScript |
 | Voice | Web Speech API |
 | Persistence | localStorage |
+| AI | Groq — `llama-3.3-70b-versatile` |
 | Serverless | `api/ask.js` (Vercel) |
 | Hosting | Vercel |
 
 ## Design Language
 
-- **Iron HUD.** Amber glows, scan-line energy, tactical framing, and high-contrast surfaces.
+- **Electric-blue HUD.** Cyan glows, scan-line energy, tactical framing, and high-contrast surfaces.
 - **No framework bloat.** The interface stays immediate and lightweight.
 - **Personality matters.** This project leans into presence, not generic assistant minimalism.
 - **Nostalgia, upgraded.** The original student-project DNA is still there, just treated seriously.
@@ -53,7 +55,7 @@ This split means the HUD loads instantly, local commands work offline, and the A
 <details>
 <summary>Quick Start</summary>
 
-For the frontend shell:
+For the frontend shell (voice, tools, notes — no AI):
 
 ```bash
 git clone https://github.com/TheAlgo7/jarvis-web.git
@@ -63,7 +65,11 @@ python -m http.server 8000
 
 Open `http://localhost:8000`.
 
-For full hosted behaviour including the AI endpoint, deploy to Vercel — the `api/ask.js` serverless function is picked up automatically.
+For full behaviour including AI responses, deploy to Vercel and add your Groq API key:
+
+1. Get a free key at [console.groq.com](https://console.groq.com)
+2. In Vercel → Settings → Environment Variables, add `GROQ_API_KEY`
+3. Redeploy — `api/ask.js` is picked up automatically
 
 </details>
 
