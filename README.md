@@ -1,61 +1,89 @@
-<div align="center">
+<p align="center">
+  <img src="docs/readme/hero.png" alt="J.A.R.V.I.S.: a browser assistant that feels like a command deck" width="100%">
+</p>
 
-# J.A.R.V.I.S.
+<p align="center">
+  <strong>Just A Rather Very Intelligent System: a voice and text assistant in a cyan HUD, in any browser.</strong><br>
+  Quick tools run on the device; open questions go to a real AI with a calm, dry British voice.
+</p>
 
-### *Just A Rather Very Intelligent System.*
+<p align="center">
+  <a href="https://jarvis-web-alpha.vercel.app"><strong>Open JARVIS</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#what-it-can-do">What it can do</a>
+  &nbsp;·&nbsp;
+  <a href="#how-it-works">How it works</a>
+  &nbsp;·&nbsp;
+  <a href="#run-it-locally">Run it locally</a>
+</p>
 
-[![Live Site](https://img.shields.io/badge/Live-jarvis--web--alpha.vercel.app-5D98A6?style=flat-square&labelColor=111111)](https://jarvis-web-alpha.vercel.app)
-[![HTML5](https://img.shields.io/badge/HTML5-5D98A6?style=flat-square&logo=html5&logoColor=white&labelColor=111111)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![JavaScript](https://img.shields.io/badge/JavaScript-5D98A6?style=flat-square&logo=javascript&logoColor=white&labelColor=111111)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Voice UI](https://img.shields.io/badge/Interface-Voice%20·%20Text%20·%20HUD-5D98A6?style=flat-square&labelColor=111111)](https://github.com/TheAlgo7/jarvis-web)
+<p align="center">
+  <img alt="Vanilla JavaScript" src="https://img.shields.io/badge/stack-vanilla%20JS-19C3E6?style=flat-square&labelColor=111111">
+  <img alt="Web Speech API" src="https://img.shields.io/badge/voice-Web%20Speech%20API-19C3E6?style=flat-square&labelColor=111111">
+  <img alt="Groq" src="https://img.shields.io/badge/AI-Groq-19C3E6?style=flat-square&labelColor=111111">
+</p>
 
-</div>
+## Why JARVIS
 
-![Hero](./docs/assets/hero.png)
+This started as a college project by Gaurav Kumar and Ameen James, and was rebuilt years later into the version it should have been. The point was never another chat page. It is an assistant with presence: a boot sequence, a reactor core that listens and speaks, and a personality modelled on the one from the films.
 
-JARVIS is a browser assistant that puts personality and interface design on equal footing with functionality. It runs primarily in the frontend, listens through the Web Speech API, responds through text and voice, and wraps the whole interaction model in an amber-on-black HUD that feels closer to a command deck than a chatbot page. The point is not just to ask questions — it is to feel like you are operating a system. Originally born as a college project by **Gaurav Kumar** and **Ameen James**, then rebuilt into the version it should have been: faster, sharper, more theatrical, and far more intentional.
+Most of what it does happens in the browser, instantly and without an account. Only questions that need real intelligence leave the page.
 
-## What It Can Do
+## Screenshots
 
-- **Voice-first interaction** with fallback text input.
-- **Utility commands** for search, notes, quick actions, and browser workflows.
-- **Weather and lightweight live data** integration.
-- **Persistent local notes** without needing a user account.
-- **Multi-session chat history** — sidebar with search, rename, and delete across sessions.
-- **A distinct personality layer** instead of sterile assistant output.
+<p align="center">
+  <img src="docs/readme/desktop-chat.png" width="100%" alt="JARVIS on a laptop">
+</p>
 
-## How It Works
+<table>
+  <tr>
+    <td align="center"><img src="docs/readme/boot.png" width="160" alt="Boot sequence"><br><sub>The boot sequence</sub></td>
+    <td align="center"><img src="docs/readme/phone.png" width="160" alt="Standby"><br><sub>Standby</sub></td>
+    <td align="center"><img src="docs/readme/phone-chat.png" width="160" alt="An AI answer"><br><sub>An answer from the AI</sub></td>
+  </tr>
+</table>
 
-JARVIS splits into two layers:
+## What it can do
 
-**Frontend shell** (`index.html`, `style.css`, `app.js`) — Runs entirely in the browser. Handles voice input via the Web Speech API, renders the HUD interface, manages localStorage notes, and routes commands locally where possible.
+- **Talk or type.** Tap the mic and speak, or type; JARVIS answers in text and out loud.
+- **Quick tools, on the device.** Time and date, weather for any city, jokes, calculations, timers, strong passwords, and battery and connection status.
+- **Open things.** "Open github.com", "search for...", "play..." on YouTube, or a Wikipedia summary.
+- **Notes.** "Remember..." saves a note in the browser; ask for your notes to read them back.
+- **Real answers.** Anything else goes to the AI with the last 20 messages for context.
+- **Chat history.** A sidebar of past conversations with search, rename and delete.
+- **Your title.** "Call me Boss" and JARVIS stops saying Sir.
 
-**Serverless endpoint** (`api/ask.js`) — A single Vercel serverless function that proxies requests to the AI backend. Keeps API keys out of the client. The frontend calls it only when a command needs external intelligence — search, weather, or open-ended questions.
+## How it works
 
-This split means the HUD loads instantly, local commands work offline, and the AI layer scales independently.
+```mermaid
+flowchart LR
+  you["Voice or text"] --> router["Command router<br/>app.js"]
+  router -- "time, maths, notes,<br/>timers, passwords" --> local["Answered in the browser"]
+  router -- "weather" --> wttr["wttr.in"]
+  router -- "anything else" --> ask["/api/ask<br/>Vercel function"]
+  ask --> groq["Groq<br/>Qwen, then gpt-oss"]
+  local --> speak["Text + speech synthesis"]
+  wttr --> speak
+  groq --> speak
+```
 
-## Stack
+- **A router before a model.** `app.js` matches commands with plain patterns first, so the common things are instant and work without the AI.
+- **The key never reaches the browser.** `/api/ask` is a small Vercel function that holds the Groq key, caps each request to the app's own 20-message history, and falls back to a second model if the first is unavailable.
+- **Local by default.** Notes, conversations and your title live in `localStorage`. There is no account.
 
-| Layer | Technology |
-| --- | --- |
-| UI | HTML, CSS, Vanilla JavaScript |
-| Voice | Web Speech API |
-| Persistence | localStorage |
-| AI | Groq — `llama-3.3-70b-versatile` |
-| Serverless | `api/ask.js` (Vercel) |
+## Built with
+
+| Layer | Choice |
+|---|---|
+| Interface | HTML, CSS and vanilla JavaScript, Chakra Petch and JetBrains Mono |
+| Voice | Web Speech API for recognition and speech synthesis |
+| AI | Groq through one Vercel function |
+| Weather | wttr.in |
 | Hosting | Vercel |
 
-## Design Language
+## Run it locally
 
-- **Electric-blue HUD.** Cyan glows, scan-line energy, tactical framing, and high-contrast surfaces.
-- **No framework bloat.** The interface stays immediate and lightweight.
-- **Personality matters.** This project leans into presence, not generic assistant minimalism.
-- **Nostalgia, upgraded.** The original student-project DNA is still there, just treated seriously.
-
-<details>
-<summary>Quick Start</summary>
-
-For the frontend shell (voice, tools, notes — no AI):
+The interface, voice, tools and notes run from any static server:
 
 ```bash
 git clone https://github.com/TheAlgo7/jarvis-web.git
@@ -63,18 +91,12 @@ cd jarvis-web
 python -m http.server 8000
 ```
 
-Open `http://localhost:8000`.
+Open http://localhost:8000. For AI answers, deploy to Vercel and set `GROQ_API_KEY` (a free key from [console.groq.com](https://console.groq.com)); `api/ask.js` is picked up automatically.
 
-For full behaviour including AI responses, deploy to Vercel and add your Groq API key:
+`python scripts/readme-shots.py` rebuilds the screenshots in this README from the live site.
 
-1. Get a free key at [console.groq.com](https://console.groq.com)
-2. In Vercel → Settings → Environment Variables, add `GROQ_API_KEY`
-3. Redeploy — `api/ask.js` is picked up automatically
+## Licence
 
-</details>
+Copyright © 2026 Gaurav Kumar, [The Algothrim](https://thealgothrim.com). All rights reserved.
 
-<div align="center">
-
-Built for the version of browser AI that should have looked **cool from the first second** — by **[The Algothrim](https://thealgothrim.com)**
-
-</div>
+The code is public to read and learn from. It is not licensed for reuse. J.A.R.V.I.S. is a fan project and is not affiliated with Marvel.

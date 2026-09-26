@@ -1,3 +1,7 @@
 Backup.zip
 *.zip
 .vscode/
+
+# README screenshots and their capture script
+docs/
+scripts/
