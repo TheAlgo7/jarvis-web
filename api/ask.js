@@ -16,11 +16,14 @@ export default async function handler(req, res) {
   // Support both legacy {question} format and new {messages} format
   let conversationMessages;
   if (Array.isArray(messages) && messages.length > 0) {
-    conversationMessages = messages.filter(
-      (m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
-    );
+    // The app sends the last 20 messages; hold any caller to the same, so a
+    // hand-made request cannot spend the key's per-minute token budget.
+    conversationMessages = messages
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-20)
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   } else if (question && typeof question === "string") {
-    conversationMessages = [{ role: "user", content: question.trim() }];
+    conversationMessages = [{ role: "user", content: question.trim().slice(0, 4000) }];
   }
 
   if (!conversationMessages || conversationMessages.length === 0) {
