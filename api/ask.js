@@ -70,30 +70,40 @@ export default async function handler(req, res) {
     "Acknowledge the situation briefly and without judgment, then pivot to practical next steps. " +
     "Be warm but composed — not clinical, not dramatic. Separate immediate actions from longer-term recovery.";
 
+  // Groq retired every Llama model in 2026 and this used to name one, so the
+  // AI answered "temporarily unavailable" to everything. Try a short list
+  // instead: Qwen answers in character in a few dozen tokens; gpt-oss is a
+  // reasoning model that spends tokens thinking first, so it gets more room.
+  const MODELS = [
+    { model: "qwen/qwen3.8-27b", max_tokens: 600 },
+    { model: "openai/gpt-oss-120b", max_tokens: 1500 },
+  ];
+
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...conversationMessages,
-        ],
-        max_tokens: 600,
-        temperature: 0.60,
-      }),
-    });
+    for (const { model, max_tokens } of MODELS) {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...conversationMessages,
+          ],
+          max_tokens,
+          temperature: 0.60,
+        }),
+      });
+      if (!groqRes.ok) continue;
 
-    if (!groqRes.ok) {
-      return res.status(502).json({ error: "AI backend unavailable" });
+      const data = await groqRes.json();
+      const answer = data.choices?.[0]?.message?.content?.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      if (answer) return res.status(200).json({ answer });
     }
-
-    const data = await groqRes.json();
-    res.status(200).json({ answer: data.choices[0].message.content.trim() });
+    return res.status(502).json({ error: "AI backend unavailable" });
   } catch (e) {
     res.status(500).json({ error: "Internal server error" });
   }
