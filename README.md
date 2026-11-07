@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/readme/hero.png" alt="J.A.R.V.I.S.: a browser assistant that feels like a command deck" width="100%">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/readme/hero-mobile.webp">
+    <img src="docs/readme/hero.webp" alt="J.A.R.V.I.S.: a browser assistant. The cyan HUD on a laptop and on a phone" width="100%">
+  </picture>
 </p>
 
 <p align="center">
@@ -8,19 +11,14 @@
 </p>
 
 <p align="center">
-  <a href="https://jarvis-web-alpha.vercel.app"><strong>Open JARVIS</strong></a>
-  &nbsp;·&nbsp;
-  <a href="#what-it-can-do">What it can do</a>
-  &nbsp;·&nbsp;
-  <a href="#how-it-works">How it works</a>
-  &nbsp;·&nbsp;
-  <a href="#run-it-locally">Run it locally</a>
+  <a href="https://jarvis-web-alpha.vercel.app"><img alt="J.A.R.V.I.S.: Open it" src="https://img.shields.io/badge/J.A.R.V.I.S.-Open%20it-0b8fa6?style=for-the-badge"></a>
 </p>
 
 <p align="center">
-  <img alt="Vanilla JavaScript" src="https://img.shields.io/badge/stack-vanilla%20JS-19C3E6?style=flat-square&labelColor=111111">
-  <img alt="Web Speech API" src="https://img.shields.io/badge/voice-Web%20Speech%20API-19C3E6?style=flat-square&labelColor=111111">
-  <img alt="Groq" src="https://img.shields.io/badge/AI-Groq-19C3E6?style=flat-square&labelColor=111111">
+  <a href="#what-it-looks-like">What it looks like</a> ·
+  <a href="#what-it-can-do">What it can do</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#run-it-locally">Run it locally</a>
 </p>
 
 ## Why JARVIS
@@ -29,19 +27,22 @@ This started as a college project by Gaurav Kumar and Ameen James, and was rebui
 
 Most of what it does happens in the browser, instantly and without an account. Only questions that need real intelligence leave the page.
 
-## Screenshots
 
-<p align="center">
-  <img src="docs/readme/desktop-chat.png" width="100%" alt="JARVIS on a laptop">
-</p>
+## What it looks like
 
-<table>
-  <tr>
-    <td align="center"><img src="docs/readme/boot.png" width="160" alt="Boot sequence"><br><sub>The boot sequence</sub></td>
-    <td align="center"><img src="docs/readme/phone.png" width="160" alt="Standby"><br><sub>Standby</sub></td>
-    <td align="center"><img src="docs/readme/phone-chat.png" width="160" alt="An AI answer"><br><sub>An answer from the AI</sub></td>
-  </tr>
-</table>
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/readme/talk-mobile.webp">
+  <img src="docs/readme/talk.webp" alt="Talk or type: the HUD on standby and in a conversation, on two phones" width="100%">
+</picture>
+
+**Talk or type.** Speak to it or type, and it answers in text and out loud; simple things are answered on the device.
+
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/readme/boot-mobile.webp">
+  <img src="docs/readme/boot.webp" alt="Boots like a suit: the start-up sequence and the HUD on standby" width="100%">
+</picture>
+
+**Boots like a suit.** A start-up sequence, then a reactor that listens, with notes and past conversations kept in the browser.
 
 ## What it can do
 
@@ -52,6 +53,7 @@ Most of what it does happens in the browser, instantly and without an account. O
 - **Real answers.** Anything else goes to the AI with the last 20 messages for context.
 - **Chat history.** A sidebar of past conversations with search, rename and delete.
 - **Your title.** "Call me Boss" and JARVIS stops saying Sir.
+
 
 ## How it works
 
@@ -71,6 +73,7 @@ flowchart LR
 - **The key never reaches the browser.** `/api/ask` is a small Vercel function that holds the Groq key, caps each request to the app's own 20-message history, and falls back to a second model if the first is unavailable.
 - **Local by default.** Notes, conversations and your title live in `localStorage`. There is no account.
 
+
 ## Built with
 
 | Layer | Choice |
@@ -81,7 +84,11 @@ flowchart LR
 | Weather | wttr.in |
 | Hosting | Vercel |
 
+
 ## Run it locally
+
+<details>
+<summary><strong>Setup and commands</strong></summary>
 
 The interface, voice, tools and notes run from any static server:
 
@@ -94,6 +101,10 @@ python -m http.server 8000
 Open http://localhost:8000. For AI answers, deploy to Vercel and set `GROQ_API_KEY` (a free key from [console.groq.com](https://console.groq.com)); `api/ask.js` is picked up automatically.
 
 `python scripts/readme-shots.py` rebuilds the screenshots in this README from the live site.
+
+The pictures on this page come from `scripts/readme-shots.py` (captures in `docs/readme/src/assets`) and `docs/readme/src/readme.js`, drawn by The Algothrim's README Kit.
+
+</details>
 
 ## Licence
 
